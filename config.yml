@@ -1,0 +1,81 @@
+# Configuração do MONAN/MPAS
+# =============================
+
+# Configurações gerais
+general:
+  base_dir: "/home/otavio.feitosa/limited_area/test_furnas"
+  forecast_days: 10  # Dias de previsão
+  
+# Configurações de data
+dates:
+  run_date: "20250727"  # Data da rodada (AAAAmmdd)
+  cycle: "00"           # Hora da rodada (00, 06, 12, 18)
+  start_time: "2025-07-27_00:00:00"
+  end_time: "2025-08-06_00:00:00"
+
+# URLs e dados de entrada
+data_sources:
+  gfs_base_url: "https://noaa-gfs-bdp-pds.s3.amazonaws.com"
+  forecast_hours:
+    start: 0
+    end: 240  # 10 dias * 24 horas
+    step: 3   # Intervalo de 3 horas
+
+# Caminhos dos executáveis e arquivos
+paths:
+  # WPS
+  wps_dir: "/home/otavio.feitosa/mpas/wps"
+  link_grib: "/home/otavio.feitosa/mpas/wps/link_grib.csh"
+  ungrib_exe: "/home/otavio.feitosa/mpas/wps/ungrib.exe"
+  vtable_gfs: "/home/otavio.feitosa/mpas/wps/ungrib/Variable_Tables/Vtable.GFS"
+  
+  # MPAS/MONAN
+  mpas_init_exe: "/home/otavio.feitosa/mpas/init/init_atmosphere_model"
+  monan_exe: "/home/otavio.feitosa/mpas/monan/atmosphere_model"
+  monan_dir: "/home/otavio.feitosa/mpas/monan"
+  
+  # Dados geográficos e malha
+  geog_data_path: "/mnt/cempa/01/otavio/atm_models/geog/mpas_static"
+  wps_geog_path: "/glade/work/wrfhelp/WPS_GEOG/"
+  static_file: "/home/otavio.feitosa/limited_area/MPAS-Limited-Area/brasil_circle.static.nc"
+  decomp_file_prefix: "/home/otavio.feitosa/limited_area/test_furnas/brasil_circle.graph.info.part."
+  
+  # Arquivos de streams (templates)
+  stream_diagnostics: "/home/otavio.feitosa/limited_area/test_furnas/stream_list.atmosphere.diagnostics"
+  stream_output: "/home/otavio.feitosa/limited_area/test_furnas/stream_list.atmosphere.output"
+  stream_surface: "/home/otavio.feitosa/limited_area/test_furnas/stream_list.atmosphere.surface"
+  streams_atmosphere: "/home/otavio.feitosa/limited_area/test_furnas/streams.atmosphere"
+
+# Configurações do domínio
+domain:
+  dx: 15000
+  dy: 15000
+  ref_lat: 33.00
+  ref_lon: -79.00
+  truelat1: 30.0
+  truelat2: 60.0
+  stand_lon: -79.0
+  e_we: 150
+  e_sn: 130
+
+# Configurações de física
+physics:
+  nvertlevels: 55
+  nsoillevels: 4
+  nfglevels: 34
+  dt: 60.0
+  physics_suite: "mesoscale_reference_monan"
+
+# Configurações do SLURM
+slurm:
+  partition: "fat"
+  nodes: 1
+  ntasks_per_node: 128
+  memory: "300G"
+  job_name: "MPAS_model"
+
+# Logging
+logging:
+  level: "INFO"
+  format: "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+  file: "monan_execution.log"
