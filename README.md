@@ -316,7 +316,7 @@ du -sh /caminho/para/20250727/
 -  **Boundary**: Arquivos `lbc.*.nc` gerados
 -  **Run**: Job submetido com sucesso
 
-## 🔧 Resolução de Problemas
+##  Resolução de Problemas
 
 ### Verificação do Setup
 
