@@ -13,7 +13,6 @@ Sistema automatizado para execução do modelo MONAN/MPAS versão 1.3/8.x no amb
 - [Etapas do Pipeline](#etapas-do-pipeline)
 - [Monitoramento](#monitoramento)
 - [Resolução de Problemas](#resolução-de-problemas)
-- [Contribuição](#contribuição)
 
 ## Visão Geral
 
@@ -422,24 +421,6 @@ ncdump -h 20250727/init/brasil_circle.init.nc
 ncdump -h 20250727/run/history.*.nc
 ```
 
-##  Contribuição
-
-### Como Contribuir
-
-1. Fork o repositório
-2. Crie uma branch para sua feature (`git checkout -b feature/nova-funcionalidade`)
-3. Commit suas mudanças (`git commit -am 'Adiciona nova funcionalidade'`)
-4. Push para a branch (`git push origin feature/nova-funcionalidade`)
-5. Crie um Pull Request
-
-### Diretrizes
-
-- Use mensagens de commit descritivas
-- Adicione logs informativos em novas funções
-- Mantenha compatibilidade com configurações existentes
-- Teste em ambiente similar ao CEMPA
-- Documente mudanças no README
-
 ### Reportar Problemas
 
 Ao reportar problemas, inclua:
@@ -449,10 +430,6 @@ Ao reportar problemas, inclua:
 - Logs relevantes
 - Passos para reproduzir o erro
 - Ambiente (SO, cluster, etc.)
-
-##  Licença
-
-Este projeto está sob a licença MIT. Veja o arquivo `LICENSE` para detalhes.
 
 ##  Suporte
 
