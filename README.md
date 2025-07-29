@@ -444,8 +444,6 @@ Ao reportar problemas, inclua:
 - Suporte para MONAN/MPAS 1.3
 - Configuração via YAML
 - Sistema de logging robusto
-- Documentação completa em português
-
 ---
 
 **Desenvolvido para o ambiente CEMPA - Centro de Estudos Meteorológicos e Pesquisas Aplicadas**
