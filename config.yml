@@ -46,7 +46,7 @@ paths:
   stream_surface: "/home/otavio.feitosa/limited_area/test_furnas/stream_list.atmosphere.surface"
   streams_atmosphere: "/home/otavio.feitosa/limited_area/test_furnas/streams.atmosphere"
 
-# Configurações do domínio
+# Configurações do domínio (opcional WPS)
 domain:
   dx: 15000
   dy: 15000
