@@ -443,7 +443,7 @@ Ao reportar problemas, inclua:
 - Implementação inicial do pipeline completo
 - Suporte para MONAN/MPAS 1.3
 - Configuração via YAML
-- Sistema de logging robusto
+- Sistema de logging
 ---
 
 **Desenvolvido para o ambiente CEMPA - Centro de Estudos Meteorológicos e Pesquisas Aplicadas**
