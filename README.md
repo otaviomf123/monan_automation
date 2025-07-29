@@ -65,7 +65,7 @@ tqdm>=4.64.0
 
 1. **Clone o repositório:**
 ```bash
-git clone https://github.com/seu-usuario/monan-mpas-runner.git
+git clone https://github.com/otaviomf123/monan-mpas-runner.git
 cd monan-mpas-runner
 ```
 
