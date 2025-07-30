@@ -20,7 +20,7 @@ O pipeline é dividido em 6 etapas principais:
 ### Software Necessário
 
 - Python 3.8+
-- MONAN/MPAS 1.3 compilado
+- MONAN/MPAS 1.3+ compilado
 - WPS (Weather Research and Forecasting Preprocessing System)
 - Sistema SLURM para submissão de jobs
 - MPI (OpenMPI ou MPICH)
