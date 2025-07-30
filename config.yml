@@ -96,4 +96,4 @@ conversion:
     lat_max: 25
     resolution: 0.1  # Resolução em graus
     max_dist_km: 30  # Distância máxima para interpolação em km
->>>>>>> Melhoramento da descricao, e add a parte de conversao para grade regular e escrita em arquivo netcdf
+>>>>>>> Melhorar a descricao e os metodos de interpolacao
