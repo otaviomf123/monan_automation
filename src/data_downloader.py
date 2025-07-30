@@ -91,18 +91,30 @@ class GFSDownloader:
                             f.write(chunk)
                             pbar.update(len(chunk))
             
+<<<<<<< HEAD
             self.logger.info(f"✓ Baixado com sucesso: {filepath.name}")
             return True
             
         except requests.exceptions.RequestException as e:
             self.logger.error(f"✗ Erro ao baixar {url}: {e}")
+=======
+            self.logger.info(f" Baixado com sucesso: {filepath.name}")
+            return True
+            
+        except requests.exceptions.RequestException as e:
+            self.logger.error(f" Erro ao baixar {url}: {e}")
+>>>>>>> Melhoramento da descricao, e add a parte de conversao para grade regular e escrita em arquivo netcdf
             # Remove arquivo parcial se existir
             if filepath.exists():
                 filepath.unlink()
             return False
         
         except Exception as e:
+<<<<<<< HEAD
             self.logger.error(f"✗ Erro inesperado ao baixar {url}: {e}")
+=======
+            self.logger.error(f" Erro inesperado ao baixar {url}: {e}")
+>>>>>>> Melhoramento da descricao, e add a parte de conversao para grade regular e escrita em arquivo netcdf
             if filepath.exists():
                 filepath.unlink()
             return False
@@ -204,7 +216,11 @@ class GFSDownloader:
             for filename in missing_files:
                 self.logger.warning(f"  - {filename}")
         else:
+<<<<<<< HEAD
             self.logger.info("✓ Todos os arquivos GFS estão presentes e válidos")
+=======
+            self.logger.info("Todos os arquivos GFS estão presentes e válidos")
+>>>>>>> Melhoramento da descricao, e add a parte de conversao para grade regular e escrita em arquivo netcdf
         
         return missing_files
     

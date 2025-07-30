@@ -211,7 +211,11 @@ class InitialConditionsGenerator:
             return False
         
         file_size_mb = output_file.stat().st_size / (1024 * 1024)
+<<<<<<< HEAD
         self.logger.info(f"✓ Condições iniciais geradas: {output_file.name} ({file_size_mb:.1f} MB)")
+=======
+        self.logger.info(f"Condições iniciais geradas: {output_file.name} ({file_size_mb:.1f} MB)")
+>>>>>>> Melhoramento da descricao, e add a parte de conversao para grade regular e escrita em arquivo netcdf
         
         return True
     
@@ -291,7 +295,11 @@ class InitialConditionsGenerator:
             self.logger.error(f"Arquivo de condições iniciais muito pequeno: {file_size_mb:.1f} MB")
             return False
         
+<<<<<<< HEAD
         self.logger.info(f"✓ Condições iniciais válidas: {file_size_mb:.1f} MB")
+=======
+        self.logger.info(f"Condições iniciais válidas: {file_size_mb:.1f} MB")
+>>>>>>> Melhoramento da descricao, e add a parte de conversao para grade regular e escrita em arquivo netcdf
         return True
     
     def cleanup_temp_files(self, init_dir: Path) -> None:

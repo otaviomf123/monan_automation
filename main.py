@@ -25,6 +25,10 @@ from src.wps_processor import WPSProcessor
 from src.initial_conditions import InitialConditionsGenerator
 from src.boundary_conditions import BoundaryConditionsGenerator
 from src.model_runner import ModelRunner
+<<<<<<< HEAD
+=======
+from src.data_converter import MPASDataConverter
+>>>>>>> Melhoramento da descricao, e add a parte de conversao para grade regular e escrita em arquivo netcdf
 from src.utils import setup_logging, create_directory_structure
 
 
@@ -36,7 +40,11 @@ def main():
     parser.add_argument('--config', '-c', default='config.yml', 
                        help='Arquivo de configuração (default: config.yml)')
     parser.add_argument('--step', '-s', 
+<<<<<<< HEAD
                        choices=['download', 'wps', 'init', 'boundary', 'run', 'all'],
+=======
+                       choices=['download', 'wps', 'init', 'boundary', 'run', 'convert', 'all'],
+>>>>>>> Melhoramento da descricao, e add a parte de conversao para grade regular e escrita em arquivo netcdf
                        default='all',
                        help='Etapa específica para executar (default: all)')
     parser.add_argument('--verbose', '-v', action='store_true',
@@ -94,6 +102,20 @@ def main():
             runner = ModelRunner(config)
             runner.run_model(dirs['run'], dirs['init'], dirs['boundary'])
         
+<<<<<<< HEAD
+=======
+        if args.step in ['convert', 'all']:
+            # Verificar se conversão está habilitada
+            conversion_enabled = config.get('conversion.enabled', True)
+            if conversion_enabled:
+                logger.info("ETAPA 6: Conversão para grade regular")
+                converter = MPASDataConverter(config)
+                static_file = Path(config.get('paths.static_file'))
+                converter.convert_all_diag_files(dirs['run'], static_file)
+            else:
+                logger.info("ETAPA 6: Conversão desabilitada na configuração")
+        
+>>>>>>> Melhoramento da descricao, e add a parte de conversao para grade regular e escrita em arquivo netcdf
         logger.info("="*60)
         logger.info("PIPELINE MONAN/MPAS CONCLUÍDO COM SUCESSO!")
         logger.info("="*60)

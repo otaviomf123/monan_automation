@@ -46,7 +46,11 @@ paths:
   stream_surface: "/home/otavio.feitosa/limited_area/test_furnas/stream_list.atmosphere.surface"
   streams_atmosphere: "/home/otavio.feitosa/limited_area/test_furnas/streams.atmosphere"
 
+<<<<<<< HEAD
 # Configurações do domínio (opcional WPS)
+=======
+# Configurações do domínio
+>>>>>>> Melhoramento da descricao, e add a parte de conversao para grade regular e escrita em arquivo netcdf
 domain:
   dx: 15000
   dy: 15000
@@ -79,3 +83,17 @@ logging:
   level: "INFO"
   format: "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
   file: "monan_execution.log"
+<<<<<<< HEAD
+=======
+
+# Configurações de conversão para grade regular
+conversion:
+  enabled: true  # Habilitar conversão automática
+  grid:
+    lon_min: -90
+    lon_max: -20
+    lat_min: -45
+    lat_max: 25
+    resolution: 0.1  # Resolução em graus
+    max_dist_km: 30  # Distância máxima para interpolação em km
+>>>>>>> Melhoramento da descricao, e add a parte de conversao para grade regular e escrita em arquivo netcdf

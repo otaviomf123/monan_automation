@@ -1,4 +1,25 @@
+<<<<<<< HEAD
 # MONAN/MPAS Runner
+=======
+#### 5. Erro na Conversão
+```bash
+# Verificar dependências
+python -c "import xarray, numpy, sklearn; print('OK')"
+
+# Verificar arquivos de saída do modelo
+ls -la 20250727/run/diag.*.nc
+ls -la 20250727/run/history.*.nc
+
+# Executar apenas conversão
+python main.py --step convert --verbose
+```### 6. Conversão de Dados
+
+- **Função**: Converte dados MPAS para grade regular
+- **Método**: Interpolação por distância inversa ponderada
+- **Entrada**: Arquivos `diag.*.nc`, `history.*.nc`
+- **Saída**: Arquivos `regular_*.nc` em grade lat/lon regular
+- **Configuração**: Grade configurável via `conversion` no config.ymlO sistema automatiza completamente o pipeline de execução do modelo MONAN/MPAS, desde o download dos dados GFS até a submissão do job no SLURM e conversão dos dados para grade regular.# MONAN/MPAS Runner
+>>>>>>> Melhoramento da descricao, e add a parte de conversao para grade regular e escrita em arquivo netcdf
 
 Sistema automatizado para execução do modelo MONAN/MPAS versão 1.3/8.x no ambiente CEMPA.
 
@@ -13,16 +34,28 @@ Sistema automatizado para execução do modelo MONAN/MPAS versão 1.3/8.x no amb
 - [Etapas do Pipeline](#etapas-do-pipeline)
 - [Monitoramento](#monitoramento)
 - [Resolução de Problemas](#resolução-de-problemas)
+<<<<<<< HEAD
 
 ## Visão Geral
 
 Este sistema automatiza completamente o pipeline de execução do modelo MONAN/MPAS, desde o download dos dados GFS até a submissão do job no SLURM. O pipeline é dividido em 5 etapas principais:
+=======
+- [Contribuição](#contribuição)
+
+## Visão Geral
+
+Este sistema automatiza completamente o pipeline de execução do modelo MONAN/MPAS, desde o download dos dados GFS até a submissão do job no SLURM. O pipeline é dividido em 6 etapas principais:
+>>>>>>> Melhoramento da descricao, e add a parte de conversao para grade regular e escrita em arquivo netcdf
 
 1. **Download de Dados**: Download automático dos dados GFS do NOAA
 2. **Processamento WPS**: Preparação dos dados meteorológicos usando ungrib
 3. **Condições Iniciais**: Geração das condições iniciais do modelo
 4. **Condições de Fronteira**: Geração das condições de fronteira laterais
 5. **Execução do Modelo**: Configuração e submissão do job SLURM
+<<<<<<< HEAD
+=======
+6. **Conversão de Dados**: Conversão automática dos dados de saída para grade regular
+>>>>>>> Melhoramento da descricao, e add a parte de conversao para grade regular e escrita em arquivo netcdf
 
 ## Pré-requisitos
 
@@ -45,6 +78,13 @@ pip install -r requirements.txt
 PyYAML>=6.0
 requests>=2.28.0
 tqdm>=4.64.0
+<<<<<<< HEAD
+=======
+xarray>=2023.1.0
+numpy>=1.21.0
+scikit-learn>=1.3.0
+netCDF4>=1.6.0
+>>>>>>> Melhoramento da descricao, e add a parte de conversao para grade regular e escrita em arquivo netcdf
 ```
 
 ### Estrutura de Diretórios Esperada
@@ -65,7 +105,11 @@ tqdm>=4.64.0
 
 1. **Clone o repositório:**
 ```bash
+<<<<<<< HEAD
 git clone https://github.com/otaviomf123/monan-mpas-runner.git
+=======
+git clone https://github.com/seu-usuario/monan-mpas-runner.git
+>>>>>>> Melhoramento da descricao, e add a parte de conversao para grade regular e escrita em arquivo netcdf
 cd monan-mpas-runner
 ```
 
@@ -118,6 +162,22 @@ paths:
   decomp_file_prefix: "/home/otavio.feitosa/limited_area/test_furnas/brasil_circle.graph.info.part."
 ```
 
+<<<<<<< HEAD
+=======
+#### Configurações de Conversão
+```yaml
+conversion:
+  enabled: true           # Habilitar conversão automática
+  grid:
+    lon_min: -90         # Longitude mínima
+    lon_max: -20         # Longitude máxima  
+    lat_min: -45         # Latitude mínima
+    lat_max: 25          # Latitude máxima
+    resolution: 0.1      # Resolução em graus
+    max_dist_km: 30      # Distância máxima para interpolação
+```
+
+>>>>>>> Melhoramento da descricao, e add a parte de conversao para grade regular e escrita em arquivo netcdf
 #### Configurações SLURM
 ```yaml
 slurm:
@@ -166,6 +226,12 @@ python main.py --step boundary
 
 # Apenas execução do modelo
 python main.py --step run
+<<<<<<< HEAD
+=======
+
+# Apenas conversão de dados
+python main.py --step convert
+>>>>>>> Melhoramento da descricao, e add a parte de conversao para grade regular e escrita em arquivo netcdf
 ```
 
 ### Opções Avançadas
@@ -215,6 +281,10 @@ monan-mpas-runner/
 │   ├── initial_conditions.py  # Condições iniciais
 │   ├── boundary_conditions.py # Condições de fronteira
 │   ├── model_runner.py        # Executor do modelo
+<<<<<<< HEAD
+=======
+│   ├── data_converter.py      # Conversor para grade regular
+>>>>>>> Melhoramento da descricao, e add a parte de conversao para grade regular e escrita em arquivo netcdf
 │   └── utils.py               # Utilitários gerais
 └── logs/                      # Logs de execução (criado automaticamente)
 ```
@@ -243,7 +313,16 @@ Para cada simulação, a seguinte estrutura é criada:
     ├── lbc.*.nc -> ../bound/
     ├── namelist.atmosphere
     ├── streams.atmosphere
+<<<<<<< HEAD
     └── run_mpas.slurm
+=======
+    ├── run_mpas.slurm
+    ├── diag.*.nc           # Dados de saída do modelo
+    ├── history.*.nc        # Arquivos de história
+    ├── interpolation_weights/  # Pesos de interpolação
+    └── regular_grid/       # Dados convertidos para grade regular
+        └── regular_diag.*.nc
+>>>>>>> Melhoramento da descricao, e add a parte de conversao para grade regular e escrita em arquivo netcdf
 ```
 
 ## Etapas do Pipeline
@@ -310,6 +389,7 @@ du -sh /caminho/para/20250727/
 
 ### Indicadores de Sucesso
 
+<<<<<<< HEAD
 -  **Download**: Todos os arquivos GFS baixados
 -  **WPS**: Arquivos FILE:* gerados
 -  **Init**: Arquivo `brasil_circle.init.nc` criado (>10MB)
@@ -317,6 +397,16 @@ du -sh /caminho/para/20250727/
 -  **Run**: Job submetido com sucesso
 
 ##  Resolução de Problemas
+=======
+- **Download**: Todos os arquivos GFS baixados
+- **WPS**: Arquivos FILE:* gerados
+- **Init**: Arquivo `brasil_circle.init.nc` criado (>10MB)
+- **Boundary**: Arquivos `lbc.*.nc` gerados
+- **Run**: Job submetido com sucesso
+- **Convert**: Arquivos `regular_*.nc` gerados
+
+## Resolução de Problemas
+>>>>>>> Melhoramento da descricao, e add a parte de conversao para grade regular e escrita em arquivo netcdf
 
 ### Verificação do Setup
 
@@ -391,7 +481,11 @@ find /base_dir/20250727 -name "*.log" -delete
 find /base_dir/20250727 -name "GRIBFILE.*" -delete
 ```
 
+<<<<<<< HEAD
 ##  Testes e Validação
+=======
+## Testes e Validação
+>>>>>>> Melhoramento da descricao, e add a parte de conversao para grade regular e escrita em arquivo netcdf
 
 ### Teste Rápido
 
@@ -416,11 +510,42 @@ general:
 ls -lh 20250727/*/
 du -sh 20250727/
 
+<<<<<<< HEAD
 # Verificar conteúdo NetCDF (se ncdump disponível)
 ncdump -h 20250727/init/brasil_circle.init.nc
 ncdump -h 20250727/run/history.*.nc
 ```
 
+=======
+# Verificar dados convertidos
+ls -lh 20250727/run/regular_grid/
+du -sh 20250727/run/regular_grid/
+
+# Verificar conteúdo NetCDF (se ncdump disponível)
+ncdump -h 20250727/init/brasil_circle.init.nc
+ncdump -h 20250727/run/history.*.nc
+ncdump -h 20250727/run/regular_grid/regular_diag.*.nc
+```
+
+## Contribuição
+
+### Como Contribuir
+
+1. Fork o repositório
+2. Crie uma branch para sua feature (`git checkout -b feature/nova-funcionalidade`)
+3. Commit suas mudanças (`git commit -am 'Adiciona nova funcionalidade'`)
+4. Push para a branch (`git push origin feature/nova-funcionalidade`)
+5. Crie um Pull Request
+
+### Diretrizes
+
+- Use mensagens de commit descritivas
+- Adicione logs informativos em novas funções
+- Mantenha compatibilidade com configurações existentes
+- Teste em ambiente similar ao CEMPA
+- Documente mudanças no README
+
+>>>>>>> Melhoramento da descricao, e add a parte de conversao para grade regular e escrita em arquivo netcdf
 ### Reportar Problemas
 
 Ao reportar problemas, inclua:
@@ -431,6 +556,7 @@ Ao reportar problemas, inclua:
 - Passos para reproduzir o erro
 - Ambiente (SO, cluster, etc.)
 
+<<<<<<< HEAD
 ##  Suporte
 
 - **Documentação**: Este README e comentários no código
@@ -438,12 +564,33 @@ Ao reportar problemas, inclua:
 - **Email**: [otavio.feitosa@cmcc.it]
 
 ##  Changelog
+=======
+## Licença
+
+Este projeto está sob a licença MIT. Veja o arquivo `LICENSE` para detalhes.
+
+## 📞 Suporte
+
+- **Documentação**: Este README e comentários no código
+- **Issues**: Use o sistema de issues do GitHub
+- **Email**: [seu-email@instituicao.br]
+
+## Changelog
+>>>>>>> Melhoramento da descricao, e add a parte de conversao para grade regular e escrita em arquivo netcdf
 
 ### v1.0.0 (2025-07-28)
 - Implementação inicial do pipeline completo
 - Suporte para MONAN/MPAS 1.3
 - Configuração via YAML
+<<<<<<< HEAD
 - Sistema de logging
+=======
+- Sistema de logging robusto
+- Conversão automática para grade regular
+- Interpolação por distância inversa ponderada
+- Documentação completa em português
+
+>>>>>>> Melhoramento da descricao, e add a parte de conversao para grade regular e escrita em arquivo netcdf
 ---
 
 **Desenvolvido para o ambiente CEMPA - Centro de Estudos Meteorológicos e Pesquisas Aplicadas**

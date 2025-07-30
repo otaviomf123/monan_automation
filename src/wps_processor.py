@@ -199,7 +199,11 @@ class WPSProcessor:
             if not self._run_ungrib(work_dir):
                 return False
             
+<<<<<<< HEAD
             self.logger.info("✓ Processamento WPS concluído com sucesso!")
+=======
+            self.logger.info(" Processamento WPS concluído com sucesso!")
+>>>>>>> Melhoramento da descricao, e add a parte de conversao para grade regular e escrita em arquivo netcdf
             return True
             
         except Exception as e:
@@ -234,7 +238,11 @@ class WPSProcessor:
             self.logger.error(f"Arquivos FILE vazios encontrados: {empty_files}")
             return False
         
+<<<<<<< HEAD
         self.logger.info(f"✓ Verificação WPS: {len(file_outputs)} arquivos FILE válidos")
+=======
+        self.logger.info(f" Verificação WPS: {len(file_outputs)} arquivos FILE válidos")
+>>>>>>> Melhoramento da descricao, e add a parte de conversao para grade regular e escrita em arquivo netcdf
         return True
     
     def cleanup_wps_files(self, work_dir: Path) -> None:
