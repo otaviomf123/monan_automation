@@ -40,17 +40,21 @@ paths:
   static_file: "/home/otavio.feitosa/limited_area/MPAS-Limited-Area/brasil_circle.static.nc"
   decomp_file_prefix: "/home/otavio.feitosa/limited_area/test_furnas/brasil_circle.graph.info.part."
   
+  # Arquivo de condição inicial
+  init_filename: "brasil_circle.init.nc"
+  
   # Arquivos de streams (templates)
   stream_diagnostics: "/home/otavio.feitosa/limited_area/test_furnas/stream_list.atmosphere.diagnostics"
   stream_output: "/home/otavio.feitosa/limited_area/test_furnas/stream_list.atmosphere.output"
   stream_surface: "/home/otavio.feitosa/limited_area/test_furnas/stream_list.atmosphere.surface"
   streams_atmosphere: "/home/otavio.feitosa/limited_area/test_furnas/streams.atmosphere"
+  
+  # Templates de streams
+  stream_init_template: "./templates/streams.init_atmosphere"
+  stream_atmosphere_template: "./templates/streams.atmosphere"
+  stream_diagnostics_template: "./templates/stream_list.atmosphere.diagnostics"
 
-<<<<<<< HEAD
-# Configurações do domínio (opcional WPS)
-=======
 # Configurações do domínio
->>>>>>> Melhoramento da descricao, e add a parte de conversao para grade regular e escrita em arquivo netcdf
 domain:
   dx: 15000
   dy: 15000
@@ -83,8 +87,6 @@ logging:
   level: "INFO"
   format: "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
   file: "monan_execution.log"
-<<<<<<< HEAD
-=======
 
 # Configurações de conversão para grade regular
 conversion:
@@ -96,4 +98,3 @@ conversion:
     lat_max: 25
     resolution: 0.1  # Resolução em graus
     max_dist_km: 30  # Distância máxima para interpolação em km
->>>>>>> Melhorar a descricao e os metodos de interpolacao

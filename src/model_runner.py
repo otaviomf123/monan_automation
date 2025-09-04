@@ -62,9 +62,10 @@ class ModelRunner:
                 model_links.append((file_path, target_path))
         
         # Link para condições iniciais
-        init_file = init_dir / 'brasil_circle.init.nc'
+        init_filename = self.config.get('paths.init_filename', 'brasil_circle.init.nc')
+        init_file = init_dir / init_filename
         if init_file.exists():
-            model_links.append((init_file, run_dir / 'brasil_circle.init.nc'))
+            model_links.append((init_file, run_dir / init_filename))
         else:
             self.logger.error("Arquivo de condições iniciais não encontrado")
             return False
@@ -330,17 +331,10 @@ exit $EXIT_CODE
                 for line in output_lines:
                     if 'Submitted batch job' in line:
                         job_id = line.split()[-1]
-<<<<<<< HEAD
                         self.logger.info(f"✓ Job submetido com sucesso: ID {job_id}")
                         return True
                 
                 self.logger.info("✓ Job submetido com sucesso")
-=======
-                        self.logger.info(f" Job submetido com sucesso: ID {job_id}")
-                        return True
-                
-                self.logger.info(" Job submetido com sucesso")
->>>>>>> Melhoramento da descricao, e add a parte de conversao para grade regular e escrita em arquivo netcdf
                 return True
             else:
                 self.logger.error(f"Erro ao submeter job: {result.stderr}")
@@ -391,11 +385,7 @@ exit $EXIT_CODE
             if not self._submit_slurm_job(script_path):
                 return False
             
-<<<<<<< HEAD
             self.logger.info("✓ Modelo configurado e job submetido com sucesso!")
-=======
-            self.logger.info(" Modelo configurado e job submetido com sucesso!")
->>>>>>> Melhoramento da descricao, e add a parte de conversao para grade regular e escrita em arquivo netcdf
             self.logger.info(f"Monitore a execução em: {run_dir.parent}/mpas_execution_times.log")
             
             return True

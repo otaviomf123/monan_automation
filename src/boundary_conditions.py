@@ -104,7 +104,8 @@ class BoundaryConditionsGenerator:
         Returns:
             Conteúdo XML do arquivo streams
         """
-        init_file = init_dir / "brasil_circle.init.nc"
+        init_filename = self.config.get('paths.init_filename', 'brasil_circle.init.nc')
+        init_file = init_dir / init_filename
         
         return f'''<streams>
 <immutable_stream name="input"
@@ -185,7 +186,8 @@ class BoundaryConditionsGenerator:
         
         try:
             # 1. Verificar se condições iniciais existem
-            init_file = init_dir / "brasil_circle.init.nc"
+            init_filename = self.config.get('paths.init_filename', 'brasil_circle.init.nc')
+        init_file = init_dir / init_filename
             if not init_file.exists():
                 self.logger.error("Arquivo de condições iniciais não encontrado")
                 return False

@@ -135,6 +135,7 @@ class InitialConditionsGenerator:
         Returns:
             Conteúdo XML do arquivo streams
         """
+        init_filename = self.config.get('paths.init_filename', 'brasil_circle.init.nc')
         return f'''<streams>
 <immutable_stream name="input"
                  type="input"
@@ -144,7 +145,7 @@ class InitialConditionsGenerator:
                  input_interval="initial_only" />
 <immutable_stream name="output"
                  type="output"
-                 filename_template="brasil_circle.init.nc"
+                 filename_template="{init_filename}"
                  io_type="pnetcdf,cdf5"
                  packages="initial_conds"
                  output_interval="initial_only" />
@@ -205,17 +206,14 @@ class InitialConditionsGenerator:
             return False
         
         # Verificar se arquivo de saída foi criado
-        output_file = init_dir / "brasil_circle.init.nc"
+        init_filename = self.config.get('paths.init_filename', 'brasil_circle.init.nc')
+        output_file = init_dir / init_filename
         if not output_file.exists():
             self.logger.error("Arquivo de condições iniciais não foi criado")
             return False
         
         file_size_mb = output_file.stat().st_size / (1024 * 1024)
-<<<<<<< HEAD
         self.logger.info(f"✓ Condições iniciais geradas: {output_file.name} ({file_size_mb:.1f} MB)")
-=======
-        self.logger.info(f"Condições iniciais geradas: {output_file.name} ({file_size_mb:.1f} MB)")
->>>>>>> Melhoramento da descricao, e add a parte de conversao para grade regular e escrita em arquivo netcdf
         
         return True
     
@@ -281,7 +279,8 @@ class InitialConditionsGenerator:
         Returns:
             True se válido, False caso contrário
         """
-        output_file = init_dir / "brasil_circle.init.nc"
+        init_filename = self.config.get('paths.init_filename', 'brasil_circle.init.nc')
+        output_file = init_dir / init_filename
         
         if not output_file.exists():
             self.logger.error("Arquivo de condições iniciais não encontrado")
@@ -295,11 +294,7 @@ class InitialConditionsGenerator:
             self.logger.error(f"Arquivo de condições iniciais muito pequeno: {file_size_mb:.1f} MB")
             return False
         
-<<<<<<< HEAD
         self.logger.info(f"✓ Condições iniciais válidas: {file_size_mb:.1f} MB")
-=======
-        self.logger.info(f"Condições iniciais válidas: {file_size_mb:.1f} MB")
->>>>>>> Melhoramento da descricao, e add a parte de conversao para grade regular e escrita em arquivo netcdf
         return True
     
     def cleanup_temp_files(self, init_dir: Path) -> None:

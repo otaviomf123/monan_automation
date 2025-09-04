@@ -1,0 +1,31 @@
+<stream_list>
+<stream name="diagnostics"
+        type="output"
+        precision="single"
+        io_type="pnetcdf,cdf5"
+        filename_template="diag.$Y-$M-$D_$h.$m.$s.nc"
+        filename_interval="output_interval"
+        packages="diag"
+        output_interval="1:00:00">
+
+	<var name="ke"/>
+	<var name="pv_edge"/>
+	<var name="pv_vertex"/>
+	<var name="pv_cell"/>
+	<var name="vorticity_cell"/>
+	<var name="divergence_cell"/>
+	<var name="okuboweiss_cell"/>
+	<var name="okuboweiss_owz_cell"/>
+	<var name="relative_humidity_2m"/>
+	<var name="dewpoint_2m"/>
+	<var name="temperature_2m"/>
+	<var name="surface_pressure"/>
+	<var name="mslp"/>
+	<var name="u10"/>
+	<var name="v10"/>
+	<var name="wspd10"/>
+	<var name="wdir10"/>
+	<var name="uzonal10"/>
+	<var name="umeridional10"/>
+</stream>
+</stream_list>

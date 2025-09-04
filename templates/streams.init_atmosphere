@@ -1,0 +1,14 @@
+<streams>
+<immutable_stream name="input"
+                 type="input"
+                 precision="single"
+                 io_type="pnetcdf,cdf5"
+                 filename_template="brasil_circle.static.nc"
+                 input_interval="initial_only" />
+<immutable_stream name="output"
+                 type="output"
+                 filename_template="brasil_circle.init.nc"
+                 io_type="pnetcdf,cdf5"
+                 packages="initial_conds"
+                 output_interval="initial_only" />
+</streams>
