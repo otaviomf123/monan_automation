@@ -161,7 +161,7 @@ class ConfigLoader:
                 missing_keys.append(key)
         
         if missing_keys:
-            self.logger.error(f"Configurações obrigatórias ausentes: {missing_keys}")
+            self.logger.error(f"ERROR: Required configuration keys missing: {missing_keys}")
             return False
         
         return True
@@ -179,7 +179,7 @@ class ConfigLoader:
             yaml.dump(self.config, f, default_flow_style=False, 
                      allow_unicode=True, indent=2)
         
-        self.logger.info(f"Configuração salva em: {output_path}")
+        self.logger.info(f"INFO: Configuration saved to: {output_path}")
     
     def __str__(self) -> str:
         """Representação em string da configuração"""

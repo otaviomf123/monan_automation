@@ -80,15 +80,15 @@ def create_config_example():
         yaml.dump(config_example, f, default_flow_style=False, 
                  allow_unicode=True, indent=2)
     
-    print("✓ Arquivo config.yml.example criado")
+    print("SUCCESS: Arquivo config.yml.example criado")
     
     # Se config.yml não existir, criar cópia
     if not Path('config.yml').exists():
         shutil.copy('config.yml.example', 'config.yml')
-        print("✓ Arquivo config.yml criado (baseado no exemplo)")
-        print("⚠️  IMPORTANTE: Edite config.yml com seus caminhos específicos!")
+        print("SUCCESS: Arquivo config.yml criado (baseado no exemplo)")
+        print("WARNING:  IMPORTANTE: Edite config.yml com seus caminhos específicos!")
     else:
-        print("ℹ️  Arquivo config.yml já existe (não foi sobrescrito)")
+        print("INFO:  Arquivo config.yml já existe (não foi sobrescrito)")
 
 def create_directory_structure():
     """Cria estrutura de diretórios do projeto"""
@@ -106,7 +106,7 @@ def create_directory_structure():
     for directory in directories:
         Path(directory).mkdir(exist_ok=True)
     
-    print("✓ Estrutura de diretórios criada")
+    print("SUCCESS: Estrutura de diretórios criada")
 
 def create_sample_scripts():
     """Cria scripts de exemplo e utilitários"""
@@ -128,7 +128,7 @@ find . -name "ungrib.log*" -delete 2>/dev/null
 find . -name "log.init_atmosphere.*" -delete 2>/dev/null
 find . -name "log.atmosphere.*" -delete 2>/dev/null
 
-echo "✓ Limpeza concluída"
+echo "SUCCESS: Limpeza concluída"
 '''
     
     with open('cleanup.sh', 'w') as f:
@@ -166,7 +166,7 @@ du -sh */20*/  2>/dev/null | tail -5 || echo "Nenhuma simulação encontrada"
         f.write(monitor_script)
     os.chmod('monitor.sh', 0o755)
     
-    print("✓ Scripts utilitários criados (cleanup.sh, monitor.sh)")
+    print("SUCCESS: Scripts utilitários criados (cleanup.sh, monitor.sh)")
 
 def check_dependencies():
     """Verifica se dependências estão instaladas"""
@@ -179,17 +179,17 @@ def check_dependencies():
     for package in required_packages:
         try:
             __import__(package)
-            print(f"✓ {package}")
+            print(f"SUCCESS: {package}")
         except ImportError:
             missing_packages.append(package)
-            print(f"✗ {package}")
+            print(f"ERROR: {package}")
     
     if missing_packages:
-        print(f"\n⚠️  Pacotes faltantes: {', '.join(missing_packages)}")
+        print(f"\nWARNING:  Pacotes faltantes: {', '.join(missing_packages)}")
         print("Execute: pip install -r requirements.txt")
         return False
     else:
-        print("\n✓ Todas as dependências estão instaladas")
+        print("\nSUCCESS: Todas as dependências estão instaladas")
         return True
 
 def main():
@@ -217,9 +217,9 @@ def main():
         print("="*60)
         
         if deps_ok:
-            print("✅ Sistema pronto para uso!")
+            print("SUCCESS: Sistema pronto para uso!")
         else:
-            print("⚠️  Instale as dependências antes de continuar")
+            print("WARNING:  Instale as dependências antes de continuar")
         
         print("\nPróximos passos:")
         print("1. Edite config.yml com seus caminhos específicos")
@@ -233,7 +233,7 @@ def main():
         print("- monitor.sh (script de monitoramento)")
         
     except Exception as e:
-        print(f"❌ Erro durante configuração: {e}")
+        print(f"ERROR: Erro durante configuração: {e}")
         return 1
     
     return 0

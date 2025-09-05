@@ -164,7 +164,7 @@ class BoundaryConditionsGenerator:
             return False
         
         total_size_mb = sum(f.stat().st_size for f in lbc_files) / (1024 * 1024)
-        self.logger.info(f"✓ Gerados {len(lbc_files)} arquivos LBC ({total_size_mb:.1f} MB total)")
+        self.logger.info(f"SUCCESS: Gerados {len(lbc_files)} arquivos LBC ({total_size_mb:.1f} MB total)")
         
         return True
     
@@ -187,7 +187,7 @@ class BoundaryConditionsGenerator:
         try:
             # 1. Verificar se condições iniciais existem
             init_filename = self.config.get('paths.init_filename', 'brasil_circle.init.nc')
-        init_file = init_dir / init_filename
+            init_file = init_dir / init_filename
             if not init_file.exists():
                 self.logger.error("Arquivo de condições iniciais não encontrado")
                 return False
@@ -216,7 +216,7 @@ class BoundaryConditionsGenerator:
             if not self._run_boundary_generation(boundary_dir):
                 return False
             
-            self.logger.info("✓ Condições de fronteira geradas com sucesso!")
+            self.logger.info("SUCCESS: Condições de fronteira geradas com sucesso!")
             return True
             
         except Exception as e:
@@ -263,7 +263,7 @@ class BoundaryConditionsGenerator:
             self.logger.warning(f"Número de arquivos LBC menor que esperado: {len(lbc_files)} < {expected_files}")
         
         total_size_mb = total_size / (1024 * 1024)
-        self.logger.info(f"✓ Condições de fronteira válidas: {len(lbc_files)} arquivos, {total_size_mb:.1f} MB")
+        self.logger.info(f"SUCCESS: Condições de fronteira válidas: {len(lbc_files)} arquivos, {total_size_mb:.1f} MB")
         
         return True
     

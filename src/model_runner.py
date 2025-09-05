@@ -331,10 +331,10 @@ exit $EXIT_CODE
                 for line in output_lines:
                     if 'Submitted batch job' in line:
                         job_id = line.split()[-1]
-                        self.logger.info(f"✓ Job submetido com sucesso: ID {job_id}")
+                        self.logger.info(f"SUCCESS: Job submetido com sucesso: ID {job_id}")
                         return True
                 
-                self.logger.info("✓ Job submetido com sucesso")
+                self.logger.info("SUCCESS: Job submetido com sucesso")
                 return True
             else:
                 self.logger.error(f"Erro ao submeter job: {result.stderr}")
@@ -385,7 +385,7 @@ exit $EXIT_CODE
             if not self._submit_slurm_job(script_path):
                 return False
             
-            self.logger.info("✓ Modelo configurado e job submetido com sucesso!")
+            self.logger.info("SUCCESS: Modelo configurado e job submetido com sucesso!")
             self.logger.info(f"Monitore a execução em: {run_dir.parent}/mpas_execution_times.log")
             
             return True

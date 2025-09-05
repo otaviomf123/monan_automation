@@ -53,7 +53,7 @@ class MPASDataConverter:
         Returns:
             Dicionário com informações da grade regular
         """
-        self.logger.info("Configurando pesos de interpolação...")
+        self.logger.info("[INFO] Setting up interpolation weights...")
         
         # Criar diretório se não existir
         weights_dir.mkdir(parents=True, exist_ok=True)
@@ -80,7 +80,7 @@ class MPASDataConverter:
             np.deg2rad(lon_reg_2d.ravel())
         ])
         
-        self.logger.info("Calculando distâncias e índices...")
+        self.logger.info("[INFO] Calculating distances and indices...")
         dists, ilocs = tree_mpas.query(coords_reg, k=3)
         dists_km = dists * 6371  # converter para km
         
@@ -224,7 +224,7 @@ class MPASDataConverter:
             
             # Verificar se arquivo de entrada existe
             if not validate_file_exists(input_file, min_size=1024):  # Min 1KB
-                self.logger.error(f"Arquivo de entrada inválido: {input_file}")
+                self.logger.error(f"ERROR: Invalid input file: {input_file}")
                 return False
             
             # Carregar datasets
@@ -235,7 +235,7 @@ class MPASDataConverter:
                               for f in ["ilocs_interpolation.npy", "dists_interpolation.npy", "pesos_interpolation.npy"])
             
             if not weights_exist or force_recalc:
-                self.logger.info("Calculando pesos de interpolação...")
+                self.logger.info("[INFO] Calculating interpolation weights...")
                 grid_info = self.setup_interpolation_weights(static_file, weights_dir)
             else:
                 self.logger.debug("Carregando pesos existentes...")
@@ -254,7 +254,7 @@ class MPASDataConverter:
             
             # Obter descrição das variáveis
             vars_2d = self.get_netcdf_description(ds_input)
-            self.logger.debug(f"Encontradas {len(vars_2d)} variáveis 2D")
+            self.logger.debug(f"[DEBUG] Found {len(vars_2d)} 2D variables")
             
             # Criar dataset de saída
             lon_reg_1d = np.arange(self.lon_min, self.lon_max, self.resolution)
@@ -330,7 +330,7 @@ class MPASDataConverter:
             
             # Verificar arquivo de saída
             output_size_mb = get_file_size_mb(output_file)
-            self.logger.info(f" Conversão concluída: {output_file.name} ({output_size_mb:.1f} MB)")
+            self.logger.info(f"SUCCESS: Conversion completed: {output_file.name} ({output_size_mb:.1f} MB)")
             
             return True
             
@@ -364,7 +364,7 @@ class MPASDataConverter:
         # Ordenar por nome (que inclui data/hora)
         diag_files.sort()
         
-        self.logger.info(f"Encontrados {len(diag_files)} arquivos de diagnóstico")
+        self.logger.info(f"[INFO] Found {len(diag_files)} diagnostic files")
         for f in diag_files[:5]:  # Mostrar apenas os primeiros 5
             self.logger.debug(f"  - {f.name}")
         if len(diag_files) > 5:
@@ -392,12 +392,12 @@ class MPASDataConverter:
             diag_files = self.find_diag_files(run_dir)
             
             if not diag_files:
-                self.logger.warning("Nenhum arquivo de diagnóstico encontrado")
+                self.logger.warning("WARNING: No diagnostic files found")
                 return True  # Não é erro fatal
             
             # Verificar arquivo estático
             if not validate_file_exists(static_file, min_size=1024*1024):  # Min 1MB
-                self.logger.error(f"Arquivo estático inválido: {static_file}")
+                self.logger.error(f"ERROR: Invalid static file: {static_file}")
                 return False
             
             # Diretórios
@@ -419,7 +419,7 @@ class MPASDataConverter:
                 # Pular se já existe e é recente
                 if (output_file.exists() and 
                     output_file.stat().st_mtime > diag_file.stat().st_mtime):
-                    self.logger.info(f"  ↳ Arquivo já convertido (mais recente): {output_name}")
+                    self.logger.info(f"  -> File already converted (newer): {output_name}")
                     success_count += 1
                     continue
                 
@@ -428,26 +428,26 @@ class MPASDataConverter:
                                           weights_dir, force_recalc=(i == 1)):
                     success_count += 1
                 else:
-                    self.logger.error(f"  ↳ Falha na conversão: {diag_file.name}")
+                    self.logger.error(f"  -> Conversion failed: {diag_file.name}")
             
             # Relatório final
             self.logger.info("="*50)
-            self.logger.info("RELATÓRIO DE CONVERSÃO")
+            self.logger.info("CONVERSION REPORT")
             self.logger.info("="*50)
             self.logger.info(f"Total de arquivos: {total_files}")
-            self.logger.info(f"Conversões bem-sucedidas: {success_count}")
-            self.logger.info(f"Conversões com falha: {total_files - success_count}")
+            self.logger.info(f"Successful conversions: {success_count}")
+            self.logger.info(f"Failed conversions: {total_files - success_count}")
             
             if success_count == total_files:
-                self.logger.info("Todas as conversões foram bem-sucedidas!")
+                self.logger.info("SUCCESS: All conversions completed successfully!")
                 self.logger.info(f"Arquivos convertidos salvos em: {output_dir}")
             else:
-                self.logger.warning(f"  {total_files - success_count} conversões falharam")
+                self.logger.warning(f"WARNING: {total_files - success_count} conversions failed")
             
             return success_count > 0  # Sucesso se pelo menos uma conversão funcionou
             
         except Exception as e:
-            self.logger.error(f"Erro durante conversão de dados: {e}")
+            self.logger.error(f"ERROR: Error during data conversion: {e}")
             self.logger.exception("Detalhes do erro:")
             return False
     

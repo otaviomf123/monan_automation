@@ -84,9 +84,9 @@ def create_directory_structure(base_dir: Path, run_date: str) -> Dict[str, Path]
     # Criar diretórios
     for name, path in directories.items():
         path.mkdir(parents=True, exist_ok=True)
-        logger.debug(f"Diretório criado/verificado: {path}")
+        logger.debug(f"[DEBUG] Directory created/verified: {path}")
     
-    logger.info(f"Estrutura de diretórios criada em: {run_dir}")
+    logger.info(f"[INFO] Directory structure created at: {run_dir}")
     return directories
 
 
@@ -111,7 +111,7 @@ def create_symbolic_link(source: Path, target: Path, force: bool = True) -> bool
                 target.unlink()
                 logger.debug(f"Link existente removido: {target}")
             else:
-                logger.warning(f"Link já existe: {target}")
+                logger.warning(f"WARNING: Link already exists: {target}")
                 return False
         
         # Criar link simbólico
@@ -141,7 +141,7 @@ def run_command(command: str, cwd: Optional[Path] = None,
     
     logger.info(f"Executando comando: {command}")
     if cwd:
-        logger.debug(f"Diretório de trabalho: {cwd}")
+        logger.debug(f"[DEBUG] Working directory: {cwd}")
     
     try:
         result = subprocess.run(
@@ -154,9 +154,9 @@ def run_command(command: str, cwd: Optional[Path] = None,
         )
         
         if result.returncode == 0:
-            logger.debug(f"Comando executado com sucesso (código: {result.returncode})")
+            logger.debug(f"[DEBUG] Command executed successfully (code: {result.returncode})")
         else:
-            logger.error(f"Comando falhou (código: {result.returncode})")
+            logger.error(f"ERROR: Command failed (code: {result.returncode})")
             logger.error(f"STDERR: {result.stderr}")
         
         return result.returncode, result.stdout, result.stderr

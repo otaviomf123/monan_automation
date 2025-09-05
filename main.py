@@ -67,7 +67,7 @@ def main():
         run_date = config.get('dates.run_date')
         
         dirs = create_directory_structure(base_dir, run_date)
-        logger.info(f"Estrutura de diretórios criada em: {base_dir}/{run_date}")
+        logger.info(f"[INFO] Directory structure created at: {base_dir}/{run_date}")
         
         # Executar etapas
         if args.step in ['download', 'all']:
@@ -81,17 +81,17 @@ def main():
             wps.process(dirs['gfs'])
         
         if args.step in ['init', 'all']:
-            logger.info("ETAPA 3: Geração das condições iniciais")
+            logger.info("STEP 3: Initial conditions generation")
             init_gen = InitialConditionsGenerator(config)
             init_gen.generate(dirs['init'], dirs['gfs'])
         
         if args.step in ['boundary', 'all']:
-            logger.info("ETAPA 4: Geração das condições de fronteira")
+            logger.info("STEP 4: Boundary conditions generation")
             boundary_gen = BoundaryConditionsGenerator(config)
             boundary_gen.generate(dirs['boundary'], dirs['init'], dirs['gfs'])
         
         if args.step in ['run', 'all']:
-            logger.info("ETAPA 5: Execução do modelo MONAN")
+            logger.info("STEP 5: MONAN model execution")
             runner = ModelRunner(config)
             runner.run_model(dirs['run'], dirs['init'], dirs['boundary'])
         
@@ -99,15 +99,15 @@ def main():
             # Verificar se conversão está habilitada
             conversion_enabled = config.get('conversion.enabled', True)
             if conversion_enabled:
-                logger.info("ETAPA 6: Conversão para grade regular")
+                logger.info("STEP 6: Conversion to regular grid")
                 converter = MPASDataConverter(config)
                 static_file = Path(config.get('paths.static_file'))
                 converter.convert_all_diag_files(dirs['run'], static_file)
             else:
-                logger.info("ETAPA 6: Conversão desabilitada na configuração")
+                logger.info("STEP 6: Conversion disabled in configuration")
         
         logger.info("="*60)
-        logger.info("PIPELINE MONAN/MPAS CONCLUÍDO COM SUCESSO!")
+        logger.info("SUCCESS: MONAN/MPAS PIPELINE COMPLETED SUCCESSFULLY!")
         logger.info("="*60)
         
     except Exception as e:
