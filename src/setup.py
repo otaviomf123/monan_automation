@@ -80,26 +80,15 @@ def create_config_example():
         yaml.dump(config_example, f, default_flow_style=False, 
                  allow_unicode=True, indent=2)
     
-<<<<<<< HEAD
     print("✓ Arquivo config.yml.example criado")
-=======
-    print(" Arquivo config.yml.example criado")
->>>>>>> Melhoramento da descricao, e add a parte de conversao para grade regular e escrita em arquivo netcdf
     
     # Se config.yml não existir, criar cópia
     if not Path('config.yml').exists():
         shutil.copy('config.yml.example', 'config.yml')
-<<<<<<< HEAD
         print("✓ Arquivo config.yml criado (baseado no exemplo)")
         print("⚠️  IMPORTANTE: Edite config.yml com seus caminhos específicos!")
     else:
         print("ℹ️  Arquivo config.yml já existe (não foi sobrescrito)")
-=======
-        print(" Arquivo config.yml criado (baseado no exemplo)")
-        print("  IMPORTANTE: Edite config.yml com seus caminhos específicos!")
-    else:
-        print("  Arquivo config.yml já existe (não foi sobrescrito)")
->>>>>>> Melhoramento da descricao, e add a parte de conversao para grade regular e escrita em arquivo netcdf
 
 def create_directory_structure():
     """Cria estrutura de diretórios do projeto"""
@@ -109,23 +98,15 @@ def create_directory_structure():
         'logs',
         'templates',
         'docs',
-<<<<<<< HEAD
-        'tests'
-=======
         'tests',
         'examples',
         'output'
->>>>>>> Melhoramento da descricao, e add a parte de conversao para grade regular e escrita em arquivo netcdf
     ]
     
     for directory in directories:
         Path(directory).mkdir(exist_ok=True)
     
-<<<<<<< HEAD
     print("✓ Estrutura de diretórios criada")
-=======
-    print(" Estrutura de diretórios criada")
->>>>>>> Melhoramento da descricao, e add a parte de conversao para grade regular e escrita em arquivo netcdf
 
 def create_sample_scripts():
     """Cria scripts de exemplo e utilitários"""
@@ -147,11 +128,7 @@ find . -name "ungrib.log*" -delete 2>/dev/null
 find . -name "log.init_atmosphere.*" -delete 2>/dev/null
 find . -name "log.atmosphere.*" -delete 2>/dev/null
 
-<<<<<<< HEAD
 echo "✓ Limpeza concluída"
-=======
-echo " Limpeza concluída"
->>>>>>> Melhoramento da descricao, e add a parte de conversao para grade regular e escrita em arquivo netcdf
 '''
     
     with open('cleanup.sh', 'w') as f:
@@ -189,11 +166,7 @@ du -sh */20*/  2>/dev/null | tail -5 || echo "Nenhuma simulação encontrada"
         f.write(monitor_script)
     os.chmod('monitor.sh', 0o755)
     
-<<<<<<< HEAD
     print("✓ Scripts utilitários criados (cleanup.sh, monitor.sh)")
-=======
-    print(" Scripts utilitários criados (cleanup.sh, monitor.sh)")
->>>>>>> Melhoramento da descricao, e add a parte de conversao para grade regular e escrita em arquivo netcdf
 
 def check_dependencies():
     """Verifica se dependências estão instaladas"""
@@ -206,7 +179,6 @@ def check_dependencies():
     for package in required_packages:
         try:
             __import__(package)
-<<<<<<< HEAD
             print(f"✓ {package}")
         except ImportError:
             missing_packages.append(package)
@@ -218,19 +190,6 @@ def check_dependencies():
         return False
     else:
         print("\n✓ Todas as dependências estão instaladas")
-=======
-            print(f"{package}")
-        except ImportError:
-            missing_packages.append(package)
-            print(f"{package}")
-    
-    if missing_packages:
-        print(f"\n  Pacotes faltantes: {', '.join(missing_packages)}")
-        print("Execute: pip install -r requirements.txt")
-        return False
-    else:
-        print("\n Todas as dependências estão instaladas")
->>>>>>> Melhoramento da descricao, e add a parte de conversao para grade regular e escrita em arquivo netcdf
         return True
 
 def main():
@@ -258,15 +217,9 @@ def main():
         print("="*60)
         
         if deps_ok:
-<<<<<<< HEAD
             print("✅ Sistema pronto para uso!")
         else:
             print("⚠️  Instale as dependências antes de continuar")
-=======
-            print(" Sistema pronto para uso!")
-        else:
-            print("  Instale as dependências antes de continuar")
->>>>>>> Melhoramento da descricao, e add a parte de conversao para grade regular e escrita em arquivo netcdf
         
         print("\nPróximos passos:")
         print("1. Edite config.yml com seus caminhos específicos")
@@ -280,11 +233,7 @@ def main():
         print("- monitor.sh (script de monitoramento)")
         
     except Exception as e:
-<<<<<<< HEAD
         print(f"❌ Erro durante configuração: {e}")
-=======
-        print(f" Erro durante configuração: {e}")
->>>>>>> Melhoramento da descricao, e add a parte de conversao para grade regular e escrita em arquivo netcdf
         return 1
     
     return 0

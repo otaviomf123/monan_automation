@@ -27,10 +27,7 @@ from .wps_processor import WPSProcessor
 from .initial_conditions import InitialConditionsGenerator
 from .boundary_conditions import BoundaryConditionsGenerator
 from .model_runner import ModelRunner
-<<<<<<< HEAD
-=======
 from .data_converter import MPASDataConverter
->>>>>>> Melhoramento da descricao, e add a parte de conversao para grade regular e escrita em arquivo netcdf
 
 __all__ = [
     'ConfigLoader',
@@ -38,10 +35,6 @@ __all__ = [
     'WPSProcessor',
     'InitialConditionsGenerator',
     'BoundaryConditionsGenerator',
-<<<<<<< HEAD
-    'ModelRunner'
-=======
     'ModelRunner',
     'MPASDataConverter'
->>>>>>> Melhoramento da descricao, e add a parte de conversao para grade regular e escrita em arquivo netcdf
 ]
