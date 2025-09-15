@@ -74,6 +74,11 @@ physics:
   dt: 60.0
   physics_suite: "mesoscale_reference_monan"
 
+# Configurações de execução
+execution:
+  mode: "mpirun"       # Modo de execução: "slurm" ou "mpirun"
+  cores: 128           # Número de processos MPI
+
 # Configurações do SLURM
 slurm:
   partition: "fat"
@@ -81,6 +86,12 @@ slurm:
   ntasks_per_node: 128
   memory: "300G"
   job_name: "MPAS_model"
+
+# Configurações do mpirun
+mpirun:
+  host: "localhost"            # Host de destino para execução
+  mpi_extra_args: ""           # Argumentos adicionais do mpirun (opcional)
+  timeout_hours: 24            # Timeout de execução em horas
 
 # Logging
 logging:

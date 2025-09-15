@@ -129,14 +129,35 @@ conversion:
     max_dist_km: 30      # Distância máxima para interpolação
 ```
 
-#### Configurações SLURM
+#### Configurações de Execução
+
+##### Modo SLURM (Padrão)
 ```yaml
+# Configuração de execução
+execution:
+  mode: "slurm"        # Modo de execução: "slurm" ou "mpirun"
+  cores: 128           # Número de processos MPI (compartilhado entre ambos os modos)
+
+# Configurações específicas do SLURM
 slurm:
   partition: "fat"
   nodes: 1
-  ntasks_per_node: 128
   memory: "300G"
   job_name: "MPAS_model"
+```
+
+##### Modo MPI Direto
+```yaml
+# Configuração de execução
+execution:
+  mode: "mpirun"       # Execução direta com mpirun
+  cores: 128           # Número de processos MPI
+
+# Configurações específicas do mpirun
+mpirun:
+  host: "localhost"            # Host de destino para execução
+  mpi_extra_args: ""           # Argumentos adicionais do mpirun (opcional)
+  timeout_hours: 24            # Timeout de execução em horas
 ```
 
 ## Uso
@@ -300,7 +321,9 @@ Para cada simulação, a seguinte estrutura é criada:
 
 - **Função**: Executa simulação atmosférica
 - **Executável**: `atmosphere_model`
-- **Sistema**: SLURM com MPI
+- **Sistemas Suportados**:
+  - **SLURM**: Submissão de job para cluster (padrão)
+  - **mpirun**: Execução direta via MPI
 - **Saída**: Arquivos de história e diagnóstico
 
 ### 6. Conversão de Dados
@@ -384,7 +407,9 @@ ls -la /home/otavio.feitosa/limited_area/MPAS-Limited-Area/brasil_circle.static.
 ls -la 20250727/gfs/FILE:*
 ```
 
-#### 4. Erro no SLURM
+#### 4. Erro na Execução do Modelo
+
+##### Modo SLURM
 ```bash
 # Verificar partição disponível
 sinfo
@@ -394,6 +419,41 @@ sacctmgr show user $USER withassoc
 
 # Testar submissão manual
 sbatch 20250727/run/run_mpas.slurm
+
+# Verificar status do job
+squeue -u $USER
+```
+
+##### Modo mpirun
+```bash
+# Verificar se MPI está disponível
+which mpirun
+mpirun --version
+
+# Testar conectividade com host
+ping compute-node-01  # Se host não for localhost
+
+# Verificar recursos disponíveis
+htop  # Verificar cores disponíveis
+
+# Executar manualmente (para debug)
+cd 20250727/run
+mpirun -np 128 ./atmosphere_model
+```
+
+##### Problemas Comuns de Execução
+```bash
+# Host não configurado (mpirun)
+# ERRO: Host não configurado para mpirun
+# SOLUÇÃO: Configure mpirun.host no config.yml
+
+# Timeout na execução (mpirun)
+# ERRO: Execução excedeu timeout de X horas
+# SOLUÇÃO: Aumente mpirun.timeout_hours no config.yml
+
+# Modo de execução inválido
+# ERRO: Modo de execução inválido: xxx
+# SOLUÇÃO: Configure execution.mode como "slurm" ou "mpirun"
 ```
 
 #### 5. Erro na Conversão
@@ -512,7 +572,56 @@ for date in 20250725 20250726 20250727; do
 done
 ```
 
+### Exemplos de Configuração para Diferentes Ambientes
+
+#### Cluster com SLURM
+```yaml
+# config_cluster.yml
+execution:
+  mode: "slurm"
+  cores: 256
+
+slurm:
+  partition: "compute"
+  nodes: 2
+  memory: "500G"
+  job_name: "MONAN_simulation"
+```
+
+#### Estação de Trabalho Local
+```yaml
+# config_workstation.yml
+execution:
+  mode: "mpirun"
+  cores: 32
+
+mpirun:
+  host: "localhost"
+  timeout_hours: 48
+  mpi_extra_args: "--bind-to core --report-bindings"
+```
+
+#### Execução em Host Remoto
+```yaml
+# config_remote.yml
+execution:
+  mode: "mpirun"
+  cores: 128
+
+mpirun:
+  host: "compute-node-01"
+  timeout_hours: 72
+  mpi_extra_args: "-x LD_LIBRARY_PATH -x PATH"
+```
+
 ## Changelog
+
+### v1.1.0 (2025-09-10)
+- **NOVO**: Suporte para execução direta com mpirun (alternativa ao SLURM)
+- **NOVO**: Configuração unificada de cores (evita duplicação)
+- **NOVO**: Validação e tratamento de erro robusto para ambos os modos
+- **MELHORADO**: Sistema de logging com timeout e informações de execução
+- **MELHORADO**: Documentação com exemplos para diferentes ambientes
 
 ### v1.0.0 (2025-07-28)
 - Implementação inicial do pipeline completo

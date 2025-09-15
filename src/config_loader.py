@@ -138,6 +138,24 @@ class ConfigLoader:
         """
         return self.get('slurm', {})
     
+    def get_execution_config(self) -> Dict[str, Any]:
+        """
+        Retorna configurações de execução
+        
+        Returns:
+            Dicionário com configurações de execução (mode, cores)
+        """
+        return self.get('execution', {})
+    
+    def get_mpirun_config(self) -> Dict[str, Any]:
+        """
+        Retorna configurações do mpirun
+        
+        Returns:
+            Dicionário com configurações do mpirun
+        """
+        return self.get('mpirun', {})
+    
     def validate_config(self) -> bool:
         """
         Valida se as configurações essenciais estão presentes

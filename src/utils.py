@@ -170,45 +170,71 @@ def run_command(command: str, cwd: Optional[Path] = None,
         return -1, "", str(e)
 
 
-def write_namelist(filepath: Path, namelist_dict: Dict) -> None:
+def write_namelist(filepath: Path, namelist_dict: Dict) -> bool:
     """
     Escreve um arquivo namelist do MPAS/WRF
     
     Args:
         filepath: Caminho do arquivo
         namelist_dict: Dicionário com as configurações
+        
+    Returns:
+        True se sucesso, False caso contrário
     """
     logger = logging.getLogger(__name__)
     
-    with open(filepath, 'w') as f:
-        for section, params in namelist_dict.items():
-            f.write(f"&{section}\n")
-            for key, value in params.items():
-                if isinstance(value, str):
-                    f.write(f"    {key} = '{value}'\n")
-                elif isinstance(value, bool):
-                    f.write(f"    {key} = .{str(value).lower()}.\n")
-                else:
-                    f.write(f"    {key} = {value}\n")
-            f.write("/\n\n")
-    
-    logger.debug(f"Namelist escrito: {filepath}")
+    try:
+        # Ensure parent directory exists
+        filepath.parent.mkdir(parents=True, exist_ok=True)
+        
+        with open(filepath, 'w') as f:
+            for section, params in namelist_dict.items():
+                f.write(f"&{section}\n")
+                for key, value in params.items():
+                    if isinstance(value, str):
+                        f.write(f"    {key} = '{value}'\n")
+                    elif isinstance(value, bool):
+                        f.write(f"    {key} = .{str(value).lower()}.\n")
+                    else:
+                        f.write(f"    {key} = {value}\n")
+                f.write("/\n\n")
+        
+        logger.debug(f"Namelist escrito: {filepath}")
+        return True
+        
+    except Exception as e:
+        logger.error(f"Erro ao escrever namelist {filepath}: {e}")
+        logger.exception("Detalhes do erro:")
+        return False
 
 
-def write_streams_file(filepath: Path, streams_content: str) -> None:
+def write_streams_file(filepath: Path, streams_content: str) -> bool:
     """
     Escreve um arquivo de streams do MPAS
     
     Args:
         filepath: Caminho do arquivo
         streams_content: Conteúdo XML dos streams
+        
+    Returns:
+        True se sucesso, False caso contrário
     """
     logger = logging.getLogger(__name__)
     
-    with open(filepath, 'w') as f:
-        f.write(streams_content)
-    
-    logger.debug(f"Arquivo de streams escrito: {filepath}")
+    try:
+        # Ensure parent directory exists
+        filepath.parent.mkdir(parents=True, exist_ok=True)
+        
+        with open(filepath, 'w') as f:
+            f.write(streams_content)
+        
+        logger.debug(f"Arquivo de streams escrito: {filepath}")
+        return True
+        
+    except Exception as e:
+        logger.error(f"Erro ao escrever arquivo de streams {filepath}: {e}")
+        logger.exception("Detalhes do erro:")
+        return False
 
 
 def calculate_end_time(start_time: str, forecast_days: int) -> str:

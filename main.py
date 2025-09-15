@@ -73,27 +73,37 @@ def main():
         if args.step in ['download', 'all']:
             logger.info("ETAPA 1: Download dos dados GFS")
             downloader = GFSDownloader(config)
-            downloader.download_gfs_data(dirs['gfs'])
+            if not downloader.download_gfs_data(dirs['gfs']):
+                logger.error("FAILED: GFS download failed")
+                sys.exit(1)
         
         if args.step in ['wps', 'all']:
             logger.info("ETAPA 2: Processamento WPS (ungrib)")
             wps = WPSProcessor(config)
-            wps.process(dirs['gfs'])
+            if not wps.process(dirs['gfs']):
+                logger.error("FAILED: WPS processing failed")
+                sys.exit(1)
         
         if args.step in ['init', 'all']:
             logger.info("STEP 3: Initial conditions generation")
             init_gen = InitialConditionsGenerator(config)
-            init_gen.generate(dirs['init'], dirs['gfs'])
+            if not init_gen.generate(dirs['init'], dirs['gfs']):
+                logger.error("FAILED: Initial conditions generation failed")
+                sys.exit(1)
         
         if args.step in ['boundary', 'all']:
             logger.info("STEP 4: Boundary conditions generation")
             boundary_gen = BoundaryConditionsGenerator(config)
-            boundary_gen.generate(dirs['boundary'], dirs['init'], dirs['gfs'])
+            if not boundary_gen.generate(dirs['boundary'], dirs['init'], dirs['gfs']):
+                logger.error("FAILED: Boundary conditions generation failed")
+                sys.exit(1)
         
         if args.step in ['run', 'all']:
             logger.info("STEP 5: MONAN model execution")
             runner = ModelRunner(config)
-            runner.run_model(dirs['run'], dirs['init'], dirs['boundary'])
+            if not runner.run_model(dirs['run'], dirs['init'], dirs['boundary']):
+                logger.error("FAILED: Model execution failed")
+                sys.exit(1)
         
         if args.step in ['convert', 'all']:
             # Verificar se conversão está habilitada
