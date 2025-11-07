@@ -1,12 +1,14 @@
 """
-Executor do Modelo MONAN/MPAS
-==============================
+Executor do Modelo MONAN/MPAS - VERSÃO CORRIGIDA
+=================================================
 
-Módulo para executar o modelo MONAN/MPAS
+Correção: Aguarda a conclusão do modelo antes de retornar sucesso
 """
 
 import logging
+import os
 import subprocess
+import time
 from datetime import datetime
 from pathlib import Path
 
@@ -35,68 +37,33 @@ class ModelRunner:
         self.mpirun = config.get_mpirun_config()
     
     def _get_cores_count(self) -> int:
-        """
-        Retorna o número de cores para execução
-        
-        Returns:
-            Número de cores configurado
-        """
-        # Prioriza execution.cores, senão usa slurm.ntasks_per_node como fallback
+        """Retorna o número de cores para execução"""
         return self.execution.get('cores', self.slurm.get('ntasks_per_node', 128))
     
-    def _get_execution_mode(self) -> str:
-        """
-        Retorna o modo de execução configurado
-        
-        Returns:
-            Modo de execução ('slurm' ou 'mpirun')
-        """
-        return self.execution.get('mode', 'slurm').lower()
+    def _get_execution_backend(self) -> str:
+        """Retorna o backend de execução configurado"""
+        return self.execution.get('backend', 'slurm').lower()
     
     def _validate_mpirun_config(self) -> bool:
-        """
-        Valida configuração para execução com mpirun
-        
-        Returns:
-            True se configuração válida, False caso contrário
-        """
+        """Valida configuração para execução com mpirun"""
         cores = self._get_cores_count()
-        host = self.mpirun.get('host')
-        
         if cores <= 0:
             self.logger.error("FAILED: Número de cores deve ser maior que zero")
             return False
-            
-        if not host:
-            self.logger.error("FAILED: Host não configurado para mpirun")
-            self.logger.error("Configure 'mpirun.host' no arquivo de configuração")
-            return False
-        
-        self.logger.debug(f"Configuração mpirun validada: host={host}, cores={cores}")
+        self.logger.debug(f"Configuração mpirun validada: cores={cores}")
         return True
     
     def _create_model_links(self, run_dir: Path, init_dir: Path, boundary_dir: Path) -> bool:
-        """
-        Cria links simbólicos necessários para o modelo
-        
-        Args:
-            run_dir: Diretório de execução
-            init_dir: Diretório com condições iniciais
-            boundary_dir: Diretório com condições de fronteira
-            
-        Returns:
-            True se sucesso, False caso contrário
-        """
+        """Cria links simbólicos necessários para o modelo"""
         self.logger.info("Criando links simbólicos do modelo...")
         
         monan_dir = Path(self.paths['monan_dir'])
         
-        # Links dos executáveis e tabelas do MONAN
         model_links = [
             (monan_dir / 'atmosphere_model', run_dir / 'atmosphere_model'),
         ]
         
-        # Links para tabelas e dados físicos
+        # Links para tabelas
         table_patterns = ['*DBL', '*TBL', 'RRTMG_*']
         for pattern in table_patterns:
             files = list(monan_dir.glob(pattern))
@@ -113,13 +80,8 @@ class ModelRunner:
             self.logger.error("Arquivo de condições iniciais não encontrado")
             return False
         
-        # Links para condições de fronteira (sem usar ano para evitar problemas na virada do ano)
-        lbc_pattern = 'lbc.*-0*.nc'  # Padrão mais flexível
-        lbc_files = list(boundary_dir.glob(lbc_pattern))
-        if not lbc_files:
-            # Tentar padrão alternativo se não encontrar
-            lbc_files = list(boundary_dir.glob('lbc.*.nc'))
-        
+        # Links para condições de fronteira
+        lbc_files = list(boundary_dir.glob('lbc.*.nc'))
         if not lbc_files:
             self.logger.error("Nenhum arquivo LBC encontrado")
             return False
@@ -140,13 +102,7 @@ class ModelRunner:
         return success_count == len(model_links)
     
     def _generate_model_namelist(self) -> dict:
-        """
-        Gera namelist para o modelo MONAN
-        
-        Returns:
-            Dicionário com configurações do namelist
-        """
-        # Calcular duração da simulação
+        """Gera namelist para o modelo MONAN"""
         forecast_days = self.config.get('general.forecast_days', 10)
         run_duration = f"{forecast_days}_00:00:00"
         
@@ -229,18 +185,9 @@ class ModelRunner:
         }
     
     def _copy_stream_files(self, run_dir: Path) -> bool:
-        """
-        Copia arquivos de streams necessários
-        
-        Args:
-            run_dir: Diretório de execução
-            
-        Returns:
-            True se sucesso, False caso contrário
-        """
+        """Copia arquivos de streams necessários"""
         self.logger.info("Copiando arquivos de streams...")
         
-        # Arquivos de streams dos caminhos configurados
         stream_files = {
             'stream_list.atmosphere.diagnostics': self.paths.get('stream_diagnostics'),
             'stream_list.atmosphere.output': self.paths.get('stream_output'), 
@@ -268,22 +215,16 @@ class ModelRunner:
                 self.logger.warning(f"Arquivo de stream não encontrado: {source_path}")
         
         self.logger.info(f"Copiados {success_count}/{len(stream_files)} arquivos de streams")
-        return success_count > 0  # Pelo menos alguns devem existir
+        return success_count > 0
     
     def _generate_slurm_script(self, run_dir: Path) -> Path:
-        """
-        Gera script SLURM para submissão do job
-        
-        Args:
-            run_dir: Diretório de execução
-            
-        Returns:
-            Caminho do script SLURM gerado
-        """
+        """Gera script SLURM para submissão do job"""
         script_path = run_dir / 'run_mpas.slurm'
         
         timing_file = run_dir.parent / 'mpas_execution_times.log'
         exe_path = run_dir / 'atmosphere_model'
+        home_dir = os.path.expanduser("~")
+        bashrc_path = os.path.join(home_dir, ".bashrc")
         
         script_content = f'''#!/bin/bash
 #SBATCH --partition={self.slurm['partition']}
@@ -292,12 +233,10 @@ class ModelRunner:
 #SBATCH --mem={self.slurm['memory']}
 #SBATCH --job-name={self.slurm['job_name']}
 
-source /home/otavio.feitosa/.bashrc
+source {bashrc_path}
 
-# Arquivo para salvar os tempos de execução
 TIMING_FILE="{timing_file}"
 
-# Captura o tempo de início
 START_TIME=$(date)
 START_SECONDS=$(date +%s)
 
@@ -308,30 +247,29 @@ echo "Nós utilizados: $SLURM_JOB_NUM_NODES" >> $TIMING_FILE
 echo "Tasks por nó: $SLURM_NTASKS_PER_NODE" >> $TIMING_FILE
 echo "Total de tasks: $SLURM_NTASKS" >> $TIMING_FILE
 
-# Executa o modelo MPAS
-mpirun -np {self._get_cores_count()} {exe_path}
+infiniband_flag="{self.slurm.get('infiniband', '-iface ibp65s0')}"
+if [ -n "$infiniband_flag" ]; then
+    mpirun -np {self._get_cores_count()} $infiniband_flag {exe_path}
+else
+    mpirun -np {self._get_cores_count()} {exe_path}
+fi
 
-# Captura o código de saída
 EXIT_CODE=$?
 
-# Captura o tempo de fim
 END_TIME=$(date)
 END_SECONDS=$(date +%s)
 
-# Calcula a duração
 DURATION=$((END_SECONDS - START_SECONDS))
 HOURS=$((DURATION / 3600))
 MINUTES=$(((DURATION % 3600) / 60))
 SECONDS=$((DURATION % 60))
 
-# Salva as informações no arquivo
 echo "Fim da execução: $END_TIME" >> $TIMING_FILE
 echo "Duração total: ${{HOURS}}h ${{MINUTES}}m ${{SECONDS}}s ($DURATION segundos)" >> $TIMING_FILE
 echo "Código de saída: $EXIT_CODE" >> $TIMING_FILE
 echo "========================================" >> $TIMING_FILE
 echo "" >> $TIMING_FILE
 
-# Também exibe na saída padrão
 echo "Execução concluída em: ${{HOURS}}h ${{MINUTES}}m ${{SECONDS}}s"
 echo "Informações salvas em: $TIMING_FILE"
 
@@ -339,20 +277,17 @@ exit $EXIT_CODE
 '''
         
         script_path.write_text(script_content)
-        script_path.chmod(0o755)  # Tornar executável
+        script_path.chmod(0o755)
         
         self.logger.info(f"Script SLURM gerado: {script_path}")
         return script_path
     
-    def _submit_slurm_job(self, script_path: Path) -> bool:
+    def _submit_slurm_job(self, script_path: Path) -> tuple:
         """
-        Submete job SLURM
+        Submete job SLURM e retorna o job ID
         
-        Args:
-            script_path: Caminho do script SLURM
-            
         Returns:
-            True se sucesso, False caso contrário
+            tuple: (success: bool, job_id: str or None)
         """
         self.logger.info("Submetendo job SLURM...")
         
@@ -375,82 +310,152 @@ exit $EXIT_CODE
                     if 'Submitted batch job' in line:
                         job_id = line.split()[-1]
                         self.logger.info(f"SUCCESS: Job submetido com sucesso: ID {job_id}")
-                        return True
+                        return True, job_id
                 
                 self.logger.info("SUCCESS: Job submetido com sucesso")
-                return True
+                return True, None
             else:
                 self.logger.error(f"Erro ao submeter job: {result.stderr}")
-                return False
+                return False, None
                 
         except subprocess.TimeoutExpired:
             self.logger.error("Timeout ao submeter job SLURM")
-            return False
+            return False, None
         except Exception as e:
             self.logger.error(f"Erro inesperado ao submeter job: {e}")
-            return False
+            return False, None
     
-    def _run_mpirun_direct(self, run_dir: Path) -> bool:
+    def _wait_for_slurm_job(self, job_id: str, check_interval: int = 60) -> bool:
         """
-        Executa o modelo diretamente com mpirun
+        Aguarda a conclusão do job SLURM
         
         Args:
-            run_dir: Diretório de execução
+            job_id: ID do job SLURM
+            check_interval: Intervalo de verificação em segundos
             
         Returns:
-            True se sucesso, False caso contrário
+            bool: True se job concluído com sucesso, False caso contrário
         """
+        self.logger.info(f"Aguardando conclusão do job SLURM {job_id}...")
+        self.logger.info(f"Verificando status a cada {check_interval} segundos")
+        
+        start_time = time.time()
+        last_log_time = start_time
+        
+        while True:
+            try:
+                # Verificar status do job
+                result = subprocess.run(
+                    ['squeue', '-j', job_id, '-h', '-o', '%T'],
+                    capture_output=True,
+                    text=True,
+                    timeout=30
+                )
+                
+                job_status = result.stdout.strip()
+                
+                # Job não está mais na fila
+                if not job_status:
+                    self.logger.info("Job não está mais na fila do SLURM")
+                    
+                    # Verificar se completou com sucesso usando sacct
+                    result = subprocess.run(
+                        ['sacct', '-j', job_id, '-n', '-o', 'State'],
+                        capture_output=True,
+                        text=True,
+                        timeout=30
+                    )
+                    
+                    final_status = result.stdout.strip().split('\n')[0].strip()
+                    
+                    if 'COMPLETED' in final_status:
+                        elapsed = time.time() - start_time
+                        self.logger.info(f"SUCCESS: Job {job_id} concluído com sucesso!")
+                        self.logger.info(f"Tempo total de execução: {format_duration(int(elapsed))}")
+                        return True
+                    else:
+                        self.logger.error(f"FAILED: Job {job_id} terminou com status: {final_status}")
+                        return False
+                
+                # Job ainda está rodando ou na fila
+                current_time = time.time()
+                elapsed = current_time - start_time
+                
+                # Logar status periodicamente (a cada 10 minutos)
+                if current_time - last_log_time >= 600:
+                    self.logger.info(f"Job {job_id} ainda em execução (status: {job_status}, tempo decorrido: {format_duration(int(elapsed))})")
+                    last_log_time = current_time
+                
+                # Aguardar antes da próxima verificação
+                time.sleep(check_interval)
+                
+            except subprocess.TimeoutExpired:
+                self.logger.warning("Timeout ao verificar status do job, tentando novamente...")
+                time.sleep(check_interval)
+            except Exception as e:
+                self.logger.error(f"Erro ao verificar status do job: {e}")
+                time.sleep(check_interval)
+    
+    def _run_mpirun_direct(self, run_dir: Path) -> bool:
+        """Executa o modelo diretamente com mpirun"""
         self.logger.info("Executando modelo MPAS com mpirun direto...")
         
-        # Obter configurações
-        cores = self._get_cores_count()
-        host = self.mpirun.get('host', 'localhost')
+        hosts = self.mpirun.get('hosts', [])
+        np_config = self.mpirun.get('np')
+        cores = np_config if np_config is not None else self._get_cores_count()
         timeout_hours = self.mpirun.get('timeout_hours', 24)
-        extra_args = self.mpirun.get('mpi_extra_args', '')
+        extra_args = self.mpirun.get('extra_args', [])
+        infiniband = self.mpirun.get('infiniband', '-iface ibp65s0')
         
         exe_path = run_dir / 'atmosphere_model'
         if not exe_path.exists():
             self.logger.error(f"Executável não encontrado: {exe_path}")
             return False
         
-        # Construir comando mpirun
-        mpi_cmd = f"mpirun -np {cores}"
-        if host != 'localhost':
-            mpi_cmd += f" -host {host}"
-        if extra_args.strip():
-            mpi_cmd += f" {extra_args}"
-        mpi_cmd += f" ./atmosphere_model"
+        cmd_parts = ["mpirun"]
+        
+        if hosts:
+            hosts_str = ",".join(hosts)
+            cmd_parts.extend(["--host", hosts_str])
+        
+        cmd_parts.extend(["-np", str(cores)])
+        
+        if infiniband.strip():
+            cmd_parts.append(infiniband)
+        
+        if extra_args:
+            cmd_parts.extend(extra_args)
+        
+        cmd_parts.append("./atmosphere_model")
+        
+        mpi_cmd = " ".join(cmd_parts)
         
         self.logger.info(f"Comando de execução: {mpi_cmd}")
-        self.logger.info(f"Host: {host}, Cores: {cores}")
+        self.logger.info(f"Hosts: {hosts if hosts else 'default'}, Cores: {cores}")
         self.logger.info(f"Timeout: {timeout_hours} horas")
         
-        # Arquivo de log de execução
         timing_file = run_dir.parent / 'mpas_execution_times.log'
         
         try:
-            # Registrar início
             start_time = datetime.now()
             with open(timing_file, 'a') as f:
                 f.write("========================================\n")
                 f.write(f"Início da execução (mpirun): {start_time}\n")
-                f.write(f"Host: {host}\n")
+                f.write(f"Hosts: {hosts if hosts else 'default'}\n")
                 f.write(f"Cores: {cores}\n")
                 f.write(f"Comando: {mpi_cmd}\n")
             
             self.logger.info("Iniciando execução do modelo MPAS (pode levar várias horas)...")
             
-            # Executar modelo
             result = subprocess.run(
                 mpi_cmd,
                 cwd=run_dir,
                 shell=True,
                 capture_output=True,
                 text=True,
-                timeout=timeout_hours * 3600  # Converter para segundos
+                timeout=timeout_hours * 3600
             )
             
-            # Registrar fim
             end_time = datetime.now()
             duration = end_time - start_time
             
@@ -459,7 +464,7 @@ exit $EXIT_CODE
                 f.write(f"Duração total: {format_duration(int(duration.total_seconds()))}\n")
                 f.write(f"Código de saída: {result.returncode}\n")
                 if result.returncode != 0:
-                    f.write(f"Erro: {result.stderr[:1000]}\n")  # Primeiros 1000 chars do erro
+                    f.write(f"Erro: {result.stderr[:1000]}\n")
                 f.write("========================================\n\n")
             
             if result.returncode == 0:
@@ -475,7 +480,6 @@ exit $EXIT_CODE
         except subprocess.TimeoutExpired:
             self.logger.error(f"FAILED: Execução excedeu timeout de {timeout_hours} horas")
             
-            # Registrar timeout
             end_time = datetime.now()
             duration = end_time - start_time
             with open(timing_file, 'a') as f:
@@ -490,7 +494,7 @@ exit $EXIT_CODE
     
     def run_model(self, run_dir: Path, init_dir: Path, boundary_dir: Path) -> bool:
         """
-        Executa o modelo MONAN/MPAS
+        Executa o modelo MONAN/MPAS e AGUARDA conclusão
         
         Args:
             run_dir: Diretório de execução
@@ -498,10 +502,10 @@ exit $EXIT_CODE
             boundary_dir: Diretório com condições de fronteira
             
         Returns:
-            True se configuração bem-sucedida, False caso contrário
+            True se execução concluída com sucesso, False caso contrário
         """
         self.logger.info("="*50)
-        self.logger.info("CONFIGURANDO EXECUÇÃO DO MODELO MONAN")
+        self.logger.info("CONFIGURANDO E EXECUTANDO MODELO MONAN")
         self.logger.info("="*50)
         
         try:
@@ -519,53 +523,65 @@ exit $EXIT_CODE
             if not self._copy_stream_files(run_dir):
                 self.logger.warning("Alguns arquivos de streams não foram encontrados")
             
-            # 4. Executar baseado no modo configurado
-            execution_mode = self._get_execution_mode()
-            self.logger.info(f"Modo de execução: {execution_mode}")
+            # 4. Executar baseado no backend configurado
+            execution_backend = self._get_execution_backend()
+            self.logger.info(f"Backend de execução: {execution_backend}")
             
-            if execution_mode == 'mpirun':
-                # Validar configuração mpirun
+            if execution_backend == 'mpirun':
+                # Validar e executar diretamente com mpirun
                 if not self._validate_mpirun_config():
                     return False
-                    
-                # Executar diretamente com mpirun
+                
+                # mpirun já aguarda automaticamente a conclusão
                 if not self._run_mpirun_direct(run_dir):
                     return False
-                    
+                
                 self.logger.info("SUCCESS: Modelo executado com sucesso via mpirun!")
                 
-            elif execution_mode == 'slurm':
-                # Gerar script SLURM e submeter job
+            elif execution_backend == 'slurm':
+                # Gerar script SLURM
                 script_path = self._generate_slurm_script(run_dir)
-                if not self._submit_slurm_job(script_path):
+                
+                # Submeter job e obter job ID
+                success, job_id = self._submit_slurm_job(script_path)
+                if not success:
                     return False
-                    
-                self.logger.info("SUCCESS: Modelo configurado e job submetido com sucesso!")
+                
+                # CRÍTICO: Aguardar conclusão do job
+                if job_id:
+                    if not self._wait_for_slurm_job(job_id, check_interval=60):
+                        return False
+                else:
+                    self.logger.warning("Job ID não foi obtido, não é possível aguardar conclusão")
+                    self.logger.warning("Verifique manualmente se o job foi concluído antes de prosseguir")
+                    return False
+                
+                self.logger.info("SUCCESS: Modelo executado com sucesso via SLURM!")
                 
             else:
-                self.logger.error(f"FAILED: Modo de execução inválido: {execution_mode}")
-                self.logger.error("Modos suportados: 'slurm', 'mpirun'")
+                self.logger.error(f"FAILED: Backend de execução inválido: {execution_backend}")
+                self.logger.error("Backends suportados: 'slurm', 'mpirun'")
                 return False
             
-            self.logger.info(f"Monitore a execução em: {run_dir.parent}/mpas_execution_times.log")
+            # Verificar arquivos de saída foram criados
+            diag_files = list(run_dir.glob("diag.*.nc"))
+            history_files = list(run_dir.glob("history.*.nc"))
+            
+            if not diag_files and not history_files:
+                self.logger.error("FAILED: Nenhum arquivo de saída foi gerado")
+                return False
+            
+            self.logger.info(f"Arquivos de saída gerados: {len(diag_files)} diag, {len(history_files)} history")
             
             return True
             
         except Exception as e:
-            self.logger.error(f"Erro durante configuração do modelo: {e}")
+            self.logger.error(f"Erro durante execução do modelo: {e}")
             self.logger.exception("Detalhes do erro:")
             return False
     
     def check_model_output(self, run_dir: Path) -> dict:
-        """
-        Verifica saídas do modelo
-        
-        Args:
-            run_dir: Diretório de execução
-            
-        Returns:
-            Dicionário com informações sobre as saídas
-        """
+        """Verifica saídas do modelo"""
         output_info = {
             'history_files': [],
             'diagnostic_files': [],
@@ -573,7 +589,6 @@ exit $EXIT_CODE
             'total_size_mb': 0
         }
         
-        # Procurar diferentes tipos de arquivo de saída
         patterns = {
             'history_files': 'history.*.nc',
             'diagnostic_files': 'diag.*.nc',
