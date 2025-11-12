@@ -309,13 +309,26 @@ class ModelRunner:
                 try:
                     content = source_path.read_text()
                     
-                    # Special handling for streams.atmosphere to update init filename
+                    # Special handling for stream templates to update filenames
                     if target_name == 'streams.atmosphere':
                         import re
-                        # Replace any .init.nc filename in filename_template attributes
-                        pattern = r'(filename_template=")([^"]*\.init\.nc)(")'
-                        content = re.sub(pattern, rf'\1{init_filename}\3', content)
-                        self.logger.info(f"Updated init filename in streams.atmosphere to: {init_filename}")
+                        original_content = content
+                        
+                        # Replace hardcoded init filename with configured one
+                        pattern = r'filename_template="[^"]*\.init\.nc"'
+                        replacement = f'filename_template="{init_filename}"'
+                        content = re.sub(pattern, replacement, content)
+                        
+                        # Log changes
+                        if content != original_content:
+                            self.logger.info(f"Updated init filename in streams.atmosphere: {init_filename}")
+                        else:
+                            self.logger.debug(f"No init filename to replace in {target_name}")
+                    
+                    # Handle other stream files if they have configurable parameters
+                    elif 'streams.init_atmosphere' in target_name:
+                        # This file is generated dynamically, not copied from template
+                        pass
                     
                     target_path.write_text(content)
                     success_count += 1
