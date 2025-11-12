@@ -63,9 +63,9 @@ class MPASDataConverter:
         self.logger = logging.getLogger(__name__)
         
         # Get conversion parameters
-        conversion_config = config.get('conversion', {})
-        self.lat_resolution = conversion_config.get('lat_resolution', 0.25)
-        self.lon_resolution = conversion_config.get('lon_resolution', 0.25)
+        resolution = config.get('conversion.grid.resolution', 0.25)
+        self.lat_resolution = resolution
+        self.lon_resolution = resolution
         
         self.logger.info(f"MPAS Data Converter initialized")
         self.logger.info(f"Grid resolution: {self.lat_resolution} deg x {self.lon_resolution} deg")
@@ -543,8 +543,17 @@ class MPASDataConverter:
             lat_mpas = np.degrees(ds_static['latCell'].values)
             lon_mpas = np.degrees(ds_static['lonCell'].values)
             
-            lat_bounds = (lat_mpas.min(), lat_mpas.max())
-            lon_bounds = (lon_mpas.min(), lon_mpas.max())
+            # Get grid bounds from configuration
+            lat_bounds = (
+                self.config.get('conversion.grid.lat_min', lat_mpas.min()),
+                self.config.get('conversion.grid.lat_max', lat_mpas.max())
+            )
+            lon_bounds = (
+                self.config.get('conversion.grid.lon_min', lon_mpas.min()),
+                self.config.get('conversion.grid.lon_max', lon_mpas.max())
+            )
+            
+            self.logger.info(f"Grid bounds: lat({lat_bounds[0]:.2f}, {lat_bounds[1]:.2f}), lon({lon_bounds[0]:.2f}, {lon_bounds[1]:.2f})")
             
             lat_grid, lon_grid = self._create_regular_grid(lat_bounds, lon_bounds)
             
@@ -552,7 +561,7 @@ class MPASDataConverter:
             
             # Calculate interpolation weights ONCE for all variables and timesteps
             # Uses 3 nearest neighbors with inverse distance weighting
-            max_dist_km = self.config.get('conversion.max_dist_km', 30.0)
+            max_dist_km = self.config.get('conversion.grid.max_dist_km', 30.0)
             interp_data = self._build_interpolation_indices(tree, lat_grid, lon_grid, max_dist_km)
             self.logger.info(f"Interpolation weights computed (max dist: {max_dist_km} km)")
             
