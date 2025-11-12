@@ -6,6 +6,10 @@ Module for processing meteorological data using WPS ungrib utility.
 WPS is part of the WRF model suite and handles format conversion
 from GRIB to intermediate format for use with MPAS models.
 
+IMPORTANTE: As configuracoes de dominio (dx, dy, e_we, e_sn, etc.) 
+sao usadas APENAS pelo WPS para processar dados meteorologicos.
+O MONAN usa malha nao-estruturada definida no arquivo .static.nc.
+
 WPS Components Used:
 - ungrib: Converts GRIB2 files to intermediate WPS format
 - link_grib.csh: Creates symbolic links to GRIB files
@@ -254,7 +258,7 @@ class WPSProcessor:
         data_source = self.config.get_data_source_type()
         
         if data_source == 'era5':
-            grib_patterns = ["era5_*.grib", "era_*.grib"]
+            grib_patterns = ["era5_*.grib"]
             self.logger.info("[INFO] Using ERA5 GRIB patterns")
         else:
             grib_patterns = ["gfs.*.pgrb2.*", "gfs.*.grb2"]
@@ -281,7 +285,7 @@ class WPSProcessor:
         # Execute link_grib.csh script with appropriate pattern
         # Note: Using shell=True to handle csh script execution
         if data_source == 'era5':
-            grib_pattern = str(ic_dir / "era*.grib")  # Match both era5_* and era_*
+            grib_pattern = str(ic_dir / "era5_*.grib")  # Match ERA5 files
         else:
             grib_pattern = str(ic_dir / "gfs.*.pgrb2.*")
         

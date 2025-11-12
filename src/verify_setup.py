@@ -259,14 +259,13 @@ def verify_config_consistency(config: ConfigLoader) -> bool:
     if run_date not in start_time:
         logger.warning(f"WARNING:  run_date ({run_date}) pode nao estar consistente com start_time ({start_time})")
     
-    # Verificar configuracoes de dominio
+    # Verificar configuracoes de dominio MONAN
     domain_config = config.get_domain_config()
-    required_domain_keys = ['dx', 'dy', 'ref_lat', 'ref_lon', 'e_we', 'e_sn']
-    
-    missing_domain = [key for key in required_domain_keys if key not in domain_config]
-    if missing_domain:
-        logger.error(f"ERROR: Configuracoes de dominio faltantes: {missing_domain}")
-        return False
+    # MONAN usa malha nao-estruturada, sem necessidade de configuracoes WRF (dx, dy, etc)
+    if 'config_len_disp' not in domain_config:
+        logger.warning("WARNING: config_len_disp nao configurado, usando padrao")
+    else:
+        logger.info(f"SUCCESS: config_len_disp configurado: {domain_config['config_len_disp']}m")
     
     # Verificar configuracoes de fisica
     physics_config = config.get_physics_config()

@@ -1,13 +1,14 @@
 """
-Executor do Modelo MONAN/MPAS
-==============================
+Executor do Modelo MONAN/MPAS - VERSÃO CORRIGIDA
+=================================================
 
-Modulo para executar o modelo MONAN/MPAS
+Correção: Aguarda a conclusão do modelo antes de retornar sucesso
 """
 
 import logging
 import os
 import subprocess
+import time
 from datetime import datetime
 from pathlib import Path
 
@@ -16,14 +17,14 @@ from .utils import create_symbolic_link, write_namelist, format_duration
 
 
 class ModelRunner:
-    """Classe para execucao do modelo MONAN/MPAS"""
+    """Classe para execução do modelo MONAN/MPAS"""
     
     def __init__(self, config: ConfigLoader):
         """
         Inicializa o executor do modelo
         
         Args:
-            config: Objeto de configuracao
+            config: Objeto de configuração
         """
         self.config = config
         self.logger = logging.getLogger(__name__)
@@ -138,79 +139,37 @@ class ModelRunner:
     
     def _validate_physics_config(self) -> bool:
         """
-        Valida as opcoes de configuracao de fisica
+        Valida configuracoes basicas de fisica (sem restringir opcoes)
         
         Returns:
-            True se valido, False caso contrario
+            True sempre (nao restringe opcoes de fisica)
         """
         physics = self.config.get_physics_config()
         
-        # Opcoes validas para cada esquema
-        valid_schemes = {
-            'microphysics': ['wsm6', 'thompson', 'morrison'],
-            'convection': ['grell_freitas', 'tiedtke', 'kain_fritsch', 'off'],
-            'pbl': ['mynn', 'ysu', 'mrf'],
-            'surface_layer': ['sf_mynn', 'sf_sfclay'],
-            'land_surface': ['noah', 'noahmp'],
-            'longwave': ['rrtmg', 'cam', 'rrtmg_lw'],
-            'shortwave': ['rrtmg', 'cam', 'rrtmg_sw']
-        }
+        # Verificar se physics_suite esta definido
+        physics_suite = physics.get('physics_suite')
+        if not physics_suite:
+            self.logger.info("Nenhum physics_suite definido, usando padrao: 'mesoscale_reference_monan'")
+        else:
+            self.logger.info(f"Physics suite configurado: {physics_suite}")
         
-        all_valid = True
+        # Mostrar configuracoes de dt se definido
+        dt = physics.get('dt')
+        if dt:
+            self.logger.info(f"Timestep (dt) configurado: {dt} segundos")
+        else:
+            self.logger.info("Timestep (dt) nao definido, usando padrao: 60.0 segundos")
         
-        # Verificar microfisica
-        if 'microphysics' in physics:
-            scheme = physics['microphysics'].get('scheme')
-            if scheme and scheme not in valid_schemes['microphysics']:
-                self.logger.warning(f"Esquema de microfisica invalido: {scheme}")
-                self.logger.warning(f"Opcoes validas: {valid_schemes['microphysics']}")
-                all_valid = False
-        
-        # Verificar conveccao
-        if 'convection' in physics:
-            scheme = physics['convection'].get('scheme')
-            if scheme and scheme not in valid_schemes['convection']:
-                self.logger.warning(f"Esquema de conveccao invalido: {scheme}")
-                self.logger.warning(f"Opcoes validas: {valid_schemes['convection']}")
-                all_valid = False
-        
-        # Verificar PBL
-        if 'pbl' in physics:
-            scheme = physics['pbl'].get('scheme')
-            if scheme and scheme not in valid_schemes['pbl']:
-                self.logger.warning(f"Esquema PBL invalido: {scheme}")
-                self.logger.warning(f"Opcoes validas: {valid_schemes['pbl']}")
-                all_valid = False
-        
-        # Verificar intervalos de radiacao
+        # Mostrar intervalos de radiacao se definidos
         radiation = physics.get('radiation', {})
         for rad_type in ['longwave', 'shortwave']:
             if rad_type in radiation:
                 interval = radiation[rad_type].get('interval')
                 if interval:
-                    try:
-                        # Validar formato HH:MM:SS
-                        parts = interval.split(':')
-                        if len(parts) != 3:
-                            raise ValueError
-                        hours, minutes, seconds = map(int, parts)
-                        if not (0 <= hours <= 99 and 0 <= minutes < 60 and 0 <= seconds < 60):
-                            raise ValueError
-                    except (ValueError, AttributeError):
-                        self.logger.warning(f"Intervalo de radiacao {rad_type} invalido: {interval}")
-                        self.logger.warning("Use formato HH:MM:SS (ex: 00:30:00)")
-                        all_valid = False
+                    self.logger.info(f"Intervalo radiacao {rad_type}: {interval}")
         
-        # Verificar valores de dt
-        dt = physics.get('dt')
-        if dt and (dt <= 0 or dt > 3600):
-            self.logger.warning(f"Passo de tempo (dt) invalido: {dt} segundos")
-            self.logger.warning("Recomendado: 30-300 segundos para resolucao tipica")
-        
-        if all_valid:
-            self.logger.info("Configuracao de fisica validada com sucesso")
-        
-        return all_valid
+        self.logger.info("Configuracao de fisica carregada (todas as opcoes sao aceitas)")
+        return True
     
     def _generate_model_namelist(self) -> dict:
         """
@@ -329,6 +288,7 @@ class ModelRunner:
         init_filename = self.config.get('paths.init_filename', 'brasil_circle.init.nc')
         
         # Arquivos de streams dos caminhos configurados
+        
         stream_files = {
             'stream_list.atmosphere.diagnostics': self.paths.get('stream_diagnostics'),
             'stream_list.atmosphere.output': self.paths.get('stream_output'), 
@@ -339,7 +299,7 @@ class ModelRunner:
         success_count = 0
         for target_name, source_path in stream_files.items():
             if source_path is None:
-                self.logger.warning(f"Caminho nao configurado para: {target_name}")
+                self.logger.warning(f"Caminho não configurado para: {target_name}")
                 continue
                 
             source_path = Path(source_path)
@@ -446,7 +406,6 @@ fi
 # Captura o codigo de saida
 EXIT_CODE=$?
 
-# Captura o tempo de fim
 END_TIME=$(date)
 END_SECONDS=$(date +%s)
 
@@ -471,20 +430,17 @@ exit $EXIT_CODE
 '''
         
         script_path.write_text(script_content)
-        script_path.chmod(0o755)  # Tornar executavel
+        script_path.chmod(0o755)
         
         self.logger.info(f"Script SLURM gerado: {script_path}")
         return script_path
     
-    def _submit_slurm_job(self, script_path: Path) -> bool:
+    def _submit_slurm_job(self, script_path: Path) -> tuple:
         """
-        Submete job SLURM
+        Submete job SLURM e retorna o job ID
         
-        Args:
-            script_path: Caminho do script SLURM
-            
         Returns:
-            True se sucesso, False caso contrario
+            tuple: (success: bool, job_id: str or None)
         """
         self.logger.info("Submetendo job SLURM...")
         
@@ -501,40 +457,104 @@ exit $EXIT_CODE
             )
             
             if result.returncode == 0:
-                # Extrair job ID da saida
+                # Extrair job ID da saída
                 output_lines = result.stdout.strip().split('\n')
                 for line in output_lines:
                     if 'Submitted batch job' in line:
                         job_id = line.split()[-1]
                         self.logger.info(f"SUCCESS: Job submetido com sucesso: ID {job_id}")
-                        return True
+                        return True, job_id
                 
                 self.logger.info("SUCCESS: Job submetido com sucesso")
-                return True
+                return True, None
             else:
                 self.logger.error(f"Erro ao submeter job: {result.stderr}")
-                return False
+                return False, None
                 
         except subprocess.TimeoutExpired:
             self.logger.error("Timeout ao submeter job SLURM")
-            return False
+            return False, None
         except Exception as e:
             self.logger.error(f"Erro inesperado ao submeter job: {e}")
-            return False
+            return False, None
     
-    def _run_mpirun_direct(self, run_dir: Path) -> bool:
+    def _wait_for_slurm_job(self, job_id: str, check_interval: int = 60) -> bool:
         """
-        Executa o modelo diretamente com mpirun
+        Aguarda a conclusão do job SLURM
         
         Args:
-            run_dir: Diretorio de execucao
+            job_id: ID do job SLURM
+            check_interval: Intervalo de verificação em segundos
             
         Returns:
-            True se sucesso, False caso contrario
+            bool: True se job concluído com sucesso, False caso contrário
         """
+        self.logger.info(f"Aguardando conclusão do job SLURM {job_id}...")
+        self.logger.info(f"Verificando status a cada {check_interval} segundos")
+        
+        start_time = time.time()
+        last_log_time = start_time
+        
+        while True:
+            try:
+                # Verificar status do job
+                result = subprocess.run(
+                    ['squeue', '-j', job_id, '-h', '-o', '%T'],
+                    capture_output=True,
+                    text=True,
+                    timeout=30
+                )
+                
+                job_status = result.stdout.strip()
+                
+                # Job não está mais na fila
+                if not job_status:
+                    self.logger.info("Job não está mais na fila do SLURM")
+                    
+                    # Verificar se completou com sucesso usando sacct
+                    result = subprocess.run(
+                        ['sacct', '-j', job_id, '-n', '-o', 'State'],
+                        capture_output=True,
+                        text=True,
+                        timeout=30
+                    )
+                    
+                    final_status = result.stdout.strip().split('\n')[0].strip()
+                    
+                    if 'COMPLETED' in final_status:
+                        elapsed = time.time() - start_time
+                        self.logger.info(f"SUCCESS: Job {job_id} concluído com sucesso!")
+                        self.logger.info(f"Tempo total de execução: {format_duration(int(elapsed))}")
+                        return True
+                    else:
+                        self.logger.error(f"FAILED: Job {job_id} terminou com status: {final_status}")
+                        return False
+                
+                # Job ainda está rodando ou na fila
+                current_time = time.time()
+                elapsed = current_time - start_time
+                
+                # Logar status periodicamente (a cada 10 minutos)
+                if current_time - last_log_time >= 600:
+                    self.logger.info(f"Job {job_id} ainda em execução (status: {job_status}, tempo decorrido: {format_duration(int(elapsed))})")
+                    last_log_time = current_time
+                
+                # Aguardar antes da próxima verificação
+                time.sleep(check_interval)
+                
+            except subprocess.TimeoutExpired:
+                self.logger.warning("Timeout ao verificar status do job, tentando novamente...")
+                time.sleep(check_interval)
+            except Exception as e:
+                self.logger.error(f"Erro ao verificar status do job: {e}")
+                time.sleep(check_interval)
+    
+    def _run_mpirun_direct(self, run_dir: Path) -> bool:
+        """Executa o modelo diretamente com mpirun"""
         self.logger.info("Executando modelo MPAS com mpirun direto...")
         
         # Obter configuracoes
+        
         hosts = self.mpirun.get('hosts', [])
         np_config = self.mpirun.get('np')
         cores = np_config if np_config is not None else self._get_cores_count()
@@ -548,6 +568,7 @@ exit $EXIT_CODE
             return False
         
         # Construir comando mpirun
+        
         cmd_parts = ["mpirun"]
         
         # Adicionar hosts se especificados
@@ -590,26 +611,24 @@ exit $EXIT_CODE
             
             self.logger.info("Iniciando execucao do modelo MPAS (pode levar varias horas)...")
             
-            # Executar modelo
             result = subprocess.run(
                 mpi_cmd,
                 cwd=run_dir,
                 shell=True,
                 capture_output=True,
                 text=True,
-                timeout=timeout_hours * 3600  # Converter para segundos
+                timeout=timeout_hours * 3600
             )
             
-            # Registrar fim
             end_time = datetime.now()
             duration = end_time - start_time
             
             with open(timing_file, 'a') as f:
-                f.write(f"Fim da execucao: {end_time}\n")
-                f.write(f"Duracao total: {format_duration(int(duration.total_seconds()))}\n")
-                f.write(f"Codigo de saida: {result.returncode}\n")
+                f.write(f"Fim da execução: {end_time}\n")
+                f.write(f"Duração total: {format_duration(int(duration.total_seconds()))}\n")
+                f.write(f"Código de saída: {result.returncode}\n")
                 if result.returncode != 0:
-                    f.write(f"Erro: {result.stderr[:1000]}\n")  # Primeiros 1000 chars do erro
+                    f.write(f"Erro: {result.stderr[:1000]}\n")
                 f.write("========================================\n\n")
             
             if result.returncode == 0:
@@ -625,7 +644,6 @@ exit $EXIT_CODE
         except subprocess.TimeoutExpired:
             self.logger.error(f"FAILED: Execucao excedeu timeout de {timeout_hours} horas")
             
-            # Registrar timeout
             end_time = datetime.now()
             duration = end_time - start_time
             with open(timing_file, 'a') as f:
@@ -640,7 +658,7 @@ exit $EXIT_CODE
     
     def run_model(self, run_dir: Path, init_dir: Path, boundary_dir: Path) -> bool:
         """
-        Executa o modelo MONAN/MPAS
+        Executa o modelo MONAN/MPAS e AGUARDA conclusão
         
         Args:
             run_dir: Diretorio de execucao
@@ -648,18 +666,16 @@ exit $EXIT_CODE
             boundary_dir: Diretorio com condicoes de fronteira
             
         Returns:
-            True se configuracao bem-sucedida, False caso contrario
+            True se execucao concluida com sucesso, False caso contrario
         """
         self.logger.info("="*50)
-        self.logger.info("CONFIGURANDO EXECUCAO DO MODELO MONAN")
+        self.logger.info("CONFIGURANDO E EXECUTANDO MODELO MONAN")
         self.logger.info("="*50)
         
         try:
             # Validar configuracao de fisica
-            if not self._validate_physics_config():
-                self.logger.warning("Configuracao de fisica tem avisos, mas continuando...")
-            
-            # 1. Criar links simbolicos
+            self._validate_physics_config()
+            # 1. Criar links simbólicos
             if not self._create_model_links(run_dir, init_dir, boundary_dir):
                 return False
             
@@ -686,26 +702,47 @@ exit $EXIT_CODE
                 # Validar configuracao mpirun
                 if not self._validate_mpirun_config():
                     return False
-                    
-                # Executar diretamente com mpirun
+                
+                # mpirun já aguarda automaticamente a conclusão
                 if not self._run_mpirun_direct(run_dir):
                     return False
-                    
+                
                 self.logger.info("SUCCESS: Modelo executado com sucesso via mpirun!")
                 
             elif execution_backend == 'slurm':
                 # Gerar script SLURM e submeter job
                 script_path = self._generate_slurm_script(run_dir)
-                if not self._submit_slurm_job(script_path):
+                
+                # Submeter job e obter job ID
+                success, job_id = self._submit_slurm_job(script_path)
+                if not success:
                     return False
-                    
-                self.logger.info("SUCCESS: Modelo configurado e job submetido com sucesso!")
+                
+                # CRÍTICO: Aguardar conclusão do job
+                if job_id:
+                    if not self._wait_for_slurm_job(job_id, check_interval=60):
+                        return False
+                else:
+                    self.logger.warning("Job ID não foi obtido, não é possível aguardar conclusão")
+                    self.logger.warning("Verifique manualmente se o job foi concluído antes de prosseguir")
+                    return False
+                
+                self.logger.info("SUCCESS: Modelo executado com sucesso via SLURM!")
                 
             else:
                 self.logger.error(f"FAILED: Backend de execucao invalido: {execution_backend}")
                 self.logger.error("Backends suportados: 'slurm', 'mpirun'")
                 return False
             
+            # Verificar arquivos de saida foram criados
+            diag_files = list(run_dir.glob("diag.*.nc"))
+            history_files = list(run_dir.glob("history.*.nc"))
+            
+            if not diag_files and not history_files:
+                self.logger.error("FAILED: Nenhum arquivo de saida foi gerado")
+                return False
+            
+            self.logger.info(f"Arquivos de saida gerados: {len(diag_files)} diag, {len(history_files)} history")
             self.logger.info(f"Monitore a execucao em: {run_dir.parent}/mpas_execution_times.log")
             
             return True
@@ -732,13 +769,13 @@ exit $EXIT_CODE
             'total_size_mb': 0
         }
         
-        # Procurar diferentes tipos de arquivo de saida
         patterns = {
             'history_files': 'history.*.nc',
             'diagnostic_files': 'diag.*.nc',
             'restart_files': 'restart.*.nc'
         }
         
+        # Procurar diferentes tipos de arquivo de saida
         for file_type, pattern in patterns.items():
             files = list(run_dir.glob(pattern))
             output_info[file_type] = files

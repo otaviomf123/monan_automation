@@ -57,15 +57,7 @@ def create_config_example():
             'decomp_file_prefix': "/home/SEU_USUARIO/limited_area/test_furnas/brasil_circle.graph.info.part."
         },
         'domain': {
-            'dx': 15000,
-            'dy': 15000,
-            'ref_lat': 33.00,
-            'ref_lon': -79.00,
-            'truelat1': 30.0,
-            'truelat2': 60.0,
-            'stand_lon': -79.0,
-            'e_we': 150,
-            'e_sn': 130
+            'config_len_disp': 10000.0  # Resolucao minima da grade (metros)
         },
         'physics': {
             'nvertlevels': 55,

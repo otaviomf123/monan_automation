@@ -98,15 +98,6 @@ paths:
 
 # Configurações do domínio
 domain:
-  dx: 15000
-  dy: 15000
-  ref_lat: 33.00
-  ref_lon: -79.00
-  truelat1: 30.0
-  truelat2: 60.0
-  stand_lon: -79.0
-  e_we: 150
-  e_sn: 130
   config_len_disp: 10000.0  # Resolução da grade mínima (metros)
 
 # Physics configuration
@@ -125,23 +116,23 @@ physics:
   
   # Microphysics schemes
   microphysics:
-    scheme: "wsm6"     # Options: "wsm6", "thompson", "morrison"
+    scheme: "wsm6"   
     
   # Convection schemes
   convection:
-    scheme: "grell_freitas"  # Options: "grell_freitas", "tiedtke", "kain_fritsch", "off"
+    scheme: "grell_freitas"  
     
   # Planetary Boundary Layer (PBL)
   pbl:
-    scheme: "mynn"     # Options: "mynn", "ysu", "mrf"
+    scheme: "mynn"     
     
   # Surface layer
   surface_layer:
-    scheme: "sf_mynn"  # Options: "sf_mynn", "sf_sfclay"
+    scheme: "sf_mynn"  
     
   # Land surface model
   land_surface:
-    scheme: "noah"     # Options: "noah", "noahmp"
+    scheme: "noah"   
     
   # Radiation schemes
   radiation:
