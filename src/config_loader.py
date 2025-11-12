@@ -1,8 +1,8 @@
 """
-Carregador de Configuração
+Carregador de Configuracao
 ==========================
 
-Módulo para carregar e gerenciar configurações do MONAN/MPAS
+Modulo para carregar e gerenciar configuracoes do MONAN/MPAS
 """
 
 import logging
@@ -12,14 +12,14 @@ from typing import Any, Dict, Optional
 
 
 class ConfigLoader:
-    """Carregador e gerenciador de configurações"""
+    """Carregador e gerenciador de configuracoes"""
     
     def __init__(self, config_file: str = 'config.yml'):
         """
-        Inicializa o carregador de configuração
+        Inicializa o carregador de configuracao
         
         Args:
-            config_file: Caminho para o arquivo de configuração YAML
+            config_file: Caminho para o arquivo de configuracao YAML
         """
         self.config_file = Path(config_file)
         self.config = self._load_config()
@@ -27,17 +27,17 @@ class ConfigLoader:
         
     def _load_config(self) -> Dict[str, Any]:
         """
-        Carrega o arquivo de configuração YAML
+        Carrega o arquivo de configuracao YAML
         
         Returns:
-            Dicionário com as configurações
+            Dicionario com as configuracoes
             
         Raises:
-            FileNotFoundError: Se o arquivo não existir
+            FileNotFoundError: Se o arquivo nao existir
             yaml.YAMLError: Se houver erro no parsing do YAML
         """
         if not self.config_file.exists():
-            raise FileNotFoundError(f"Arquivo de configuração não encontrado: {self.config_file}")
+            raise FileNotFoundError(f"Arquivo de configuracao nao encontrado: {self.config_file}")
         
         try:
             with open(self.config_file, 'r', encoding='utf-8') as f:
@@ -47,14 +47,14 @@ class ConfigLoader:
     
     def get(self, key: str, default: Optional[Any] = None) -> Any:
         """
-        Obtém um valor da configuração usando notação de ponto
+        Obtem um valor da configuracao usando notacao de ponto
         
         Args:
-            key: Chave em notação de ponto (ex: 'general.base_dir')
-            default: Valor padrão se a chave não existir
+            key: Chave em notacao de ponto (ex: 'general.base_dir')
+            default: Valor padrao se a chave nao existir
             
         Returns:
-            Valor da configuração ou valor padrão
+            Valor da configuracao ou valor padrao
             
         Examples:
             >>> config.get('general.base_dir')
@@ -75,22 +75,22 @@ class ConfigLoader:
     
     def set(self, key: str, value: Any) -> None:
         """
-        Define um valor na configuração usando notação de ponto
+        Define um valor na configuracao usando notacao de ponto
         
         Args:
-            key: Chave em notação de ponto
+            key: Chave em notacao de ponto
             value: Valor a ser definido
         """
         keys = key.split('.')
         config_ref = self.config
         
-        # Navega até a penúltima chave, criando dicionários se necessário
+        # Navega ate a penultima chave, criando dicionarios se necessario
         for k in keys[:-1]:
             if k not in config_ref:
                 config_ref[k] = {}
             config_ref = config_ref[k]
         
-        # Define o valor na última chave
+        # Define o valor na ultima chave
         config_ref[keys[-1]] = value
     
     def get_paths(self) -> Dict[str, str]:
@@ -98,70 +98,102 @@ class ConfigLoader:
         Retorna todos os caminhos configurados
         
         Returns:
-            Dicionário com todos os caminhos
+            Dicionario com todos os caminhos
         """
         return self.get('paths', {})
     
     def get_dates(self) -> Dict[str, str]:
         """
-        Retorna todas as configurações de data
+        Retorna todas as configuracoes de data
         
         Returns:
-            Dicionário com configurações de data
+            Dicionario com configuracoes de data
         """
         return self.get('dates', {})
     
     def get_domain_config(self) -> Dict[str, Any]:
         """
-        Retorna configurações do domínio
+        Retorna configuracoes do dominio
         
         Returns:
-            Dicionário com configurações do domínio
+            Dicionario com configuracoes do dominio
         """
         return self.get('domain', {})
     
     def get_physics_config(self) -> Dict[str, Any]:
         """
-        Retorna configurações de física
+        Retorna configuracoes de fisica
         
         Returns:
-            Dicionário com configurações de física
+            Dicionario com configuracoes de fisica
         """
         return self.get('physics', {})
     
     def get_slurm_config(self) -> Dict[str, Any]:
         """
-        Retorna configurações do SLURM
+        Retorna configuracoes do SLURM
         
         Returns:
-            Dicionário com configurações do SLURM
+            Dicionario com configuracoes do SLURM
         """
         return self.get('slurm', {})
     
     def get_execution_config(self) -> Dict[str, Any]:
         """
-        Retorna configurações de execução
+        Retorna configuracoes de execucao
         
         Returns:
-            Dicionário com configurações de execução (mode, cores)
+            Dicionario com configuracoes de execucao (mode, cores)
         """
         return self.get('execution', {})
     
     def get_mpirun_config(self) -> Dict[str, Any]:
         """
-        Retorna configurações do mpirun
+        Retorna configuracoes do mpirun
         
         Returns:
-            Dicionário com configurações do mpirun
+            Dicionario com configuracoes do mpirun
         """
         return self.get('mpirun', {})
     
-    def validate_config(self) -> bool:
+    def get_era5_config(self) -> Dict[str, Any]:
         """
-        Valida se as configurações essenciais estão presentes
+        Retorna configuracoes do ERA5
         
         Returns:
-            True se válido, False caso contrário
+            Dicionario com configuracoes do ERA5
+        """
+        return self.get('era5', {})
+    
+    def get_data_source_type(self) -> str:
+        """
+        Retorna o tipo de fonte de dados configurado
+        
+        Returns:
+            'gfs' ou 'era5'
+        """
+        return self.get('data_source.type', 'gfs').lower()
+    
+    def get_vtable_path(self) -> str:
+        """
+        Retorna o caminho do Vtable apropriado baseado na fonte de dados
+        
+        Returns:
+            Caminho para Vtable.GFS ou Vtable.ECMWF
+        """
+        data_source = self.get_data_source_type()
+        
+        if data_source == 'era5':
+            return self.get('paths.vtable_ecmwf')
+        else:
+            return self.get('paths.vtable_gfs')
+    
+    def validate_config(self) -> bool:
+        """
+        Valida se as configuracoes essenciais estao presentes
+        
+        Returns:
+            True se valido, False caso contrario
         """
         required_keys = [
             'general.base_dir',
@@ -186,10 +218,10 @@ class ConfigLoader:
     
     def save_config(self, output_file: Optional[str] = None) -> None:
         """
-        Salva a configuração atual em um arquivo YAML
+        Salva a configuracao atual em um arquivo YAML
         
         Args:
-            output_file: Arquivo de saída (padrão: mesmo arquivo carregado)
+            output_file: Arquivo de saida (padrao: mesmo arquivo carregado)
         """
         output_path = Path(output_file) if output_file else self.config_file
         
@@ -200,9 +232,9 @@ class ConfigLoader:
         self.logger.info(f"INFO: Configuration saved to: {output_path}")
     
     def __str__(self) -> str:
-        """Representação em string da configuração"""
+        """Representacao em string da configuracao"""
         return f"ConfigLoader(config_file='{self.config_file}')"
     
     def __repr__(self) -> str:
-        """Representação detalhada da configuração"""
+        """Representacao detalhada da configuracao"""
         return f"ConfigLoader(config_file='{self.config_file}', keys={list(self.config.keys())})"

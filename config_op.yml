@@ -3,15 +3,15 @@
 
 # Configurações gerais
 general:
-  base_dir: "/home/cepel/otaviomf123/outputs"
+  base_dir: "/mnt/beegfs/op_monan"
   forecast_days: 10  # Dias de previsão
   
 # Configurações de data
 dates:
-  run_date: "20250921"  # Data da rodada (AAAAmmdd)
+  run_date: "20250111"  # Data da rodada (AAAAmmdd)
   cycle: "00"           # Hora da rodada (00, 06, 12, 18)
-  start_time: "2025-09-21_00:00:00"
-  end_time: "2025-10-01_00:00:00"
+  start_time: "2025-01-11_00:00:00"
+  end_time: "2025-01-21_00:00:00"
 
 # Data source selection
 data_source:
@@ -65,25 +65,25 @@ era5:
 # Caminhos dos executáveis e arquivos
 paths:
   # WPS
-  wps_dir: "/home/cepel/otaviomf123/mpas/WPS"
-  link_grib: "/home/cepel/otaviomf123/monan/WPS/link_grib.csh"
-  ungrib_exe: "/home/cepel/otaviomf123/monan/WPS/ungrib.exe"
-  vtable_gfs: "/home/cepel/otaviomf123/monan/WPS/ungrib/Variable_Tables/Vtable.GFS"
-  vtable_ecmwf: "/home/cepel/otaviomf123/monan/WPS/ungrib/Variable_Tables/Vtable.ECMWF"
+  wps_dir: "/home/otavio.feitosa/mpas/wps"
+  link_grib: "/home/otavio.feitosa/mpas/wps/link_grib.csh"
+  ungrib_exe: "/home/otavio.feitosa/mpas/wps/ungrib.exe"
+  vtable_gfs: "/home/otavio.feitosa/mpas/wps/ungrib/Variable_Tables/Vtable.GFS"
+  vtable_ecmwf: "/home/otavio.feitosa/mpas/wps/ungrib/Variable_Tables/Vtable.ECMWF"
   
   # MPAS/MONAN
-  mpas_init_exe: "/home/cepel/otaviomf123/monan/INIT/init_atmosphere_model"
-  monan_exe: "/home/cepel/otaviomf123/monan/MONAN/atmosphere_model"
-  monan_dir: "/home/cepel/otaviomf123/monan/MONAN"
+  mpas_init_exe: "/home/otavio.feitosa/mpas/init/init_atmosphere_model"
+  monan_exe: "/home/otavio.feitosa/mpas/monan/atmosphere_model"
+  monan_dir: "/home/otavio.feitosa/mpas/monan"
   
   # Dados geográficos e malha
   geog_data_path: "/mnt/cempa/01/otavio/atm_models/geog/mpas_static"
   wps_geog_path: "/glade/work/wrfhelp/WPS_GEOG/"
-  static_file: "/home/cepel/otaviomf123/static_files/brasil_circle.static.nc"
-  decomp_file_prefix: "/home/cepel/otaviomf123/static_files/brasil_circle.graph.info.part."
+  static_file: "/mnt/beegfs/op_monan/grids/goias_new.static.nc"
+  decomp_file_prefix: "/mnt/beegfs/op_monan/grids/goias_new.graph.info.part."
   
   # Arquivo de condição inicial
-  init_filename: "brasil_circle.init.nc"
+  init_filename: "goias_new.init.nc"
   
   # Arquivos de streams (templates)
   stream_diagnostics: "./templates/stream_list.atmosphere.diagnostics"
@@ -117,15 +117,15 @@ physics:
   nfglevels: 34        # First-guess vertical levels
   
   # Time stepping
-  dt: 60.0             # Model time step (seconds)
+  dt: 30.0             # Model time step (seconds)
   
   # Physics suite (pre-configured combinations)
-  physics_suite: "mesoscale_reference_monan"
-  # Options: "mesoscale_reference", "convection_permitting", "suite_HRRR_gf"
+  physics_suite: "convection_permitting_monan"
+  # Options: "mesoscale_reference", "convection_permitting",
   
   # Microphysics schemes
   microphysics:
-    scheme: "wsm6"     # Options: "wsm6", "thompson", "morrison"
+    scheme: "thompson"     # Options: "wsm6", "thompson", "morrison"
     
   # Convection schemes
   convection:
@@ -171,23 +171,23 @@ physics:
 # Configurações de execução
 execution:
   backend: "slurm"     # Backend de execução: "slurm" ou "mpirun" (padrão: slurm)
-  cores: 256           # Número de processos MPI
+  cores: 128           # Número de processos MPI
 
 # Configurações do SLURM
 slurm:
-  partition: "cpu"     # Partição do SLURM para submissão do job
-  nodes: 2             # Número de nós a serem utilizados
+  partition: "fat"     # Partição do SLURM para submissão do job
+  nodes: 1             # Número de nós a serem utilizados
   ntasks_per_node: 128 # Número de tasks por nó
   memory: "300G"       # Memória solicitada por nó
   job_name: "MPAS_model" # Nome do job no SLURM
-  infiniband: "-iface ibp65s0"  # Flag infiniband para execução SLURM ( editável)
+  infiniband: "-iface ib0"  # Flag infiniband para execução SLURM ( editável)
 
 # Configurações do mpirun
 mpirun:
   hosts: []            # Lista de hosts para execução (se vazio, não usa --host)
   np:                  # Número total de processos (-np). Se não especificado, usa execution.cores
   extra_args: []       # Lista de argumentos extras para o comando mpirun
-  infiniband: "-iface ibp65s0"  # Flag infiniband para mpirun ( editável)
+  infiniband: "-iface ib0"  # Flag infiniband para mpirun ( editável)
   timeout_hours: 24    # Timeout de execução em horas
 
 # Logging

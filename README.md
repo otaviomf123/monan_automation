@@ -260,16 +260,18 @@ Para cada simulação, a seguinte estrutura é criada:
 
 ```
 /base_dir/AAAAMMDD/
-├── gfs/                    # Dados GFS baixados e processados
-│   ├── gfs.t00z.pgrb2.0p25.f000
-│   ├── gfs.t00z.pgrb2.0p25.f003
+├── ic/                     # Dados de condições iniciais (GFS ou ERA5)
+│   ├── gfs.t00z.pgrb2.0p25.f000  # (se usando GFS)
+│   ├── gfs.t00z.pgrb2.0p25.f003  # (se usando GFS)
+│   ├── era5_pl_*.grib     # (se usando ERA5)
+│   ├── era5_sfc_*.grib    # (se usando ERA5)
 │   ├── ...
 │   └── FILE:2025-07-*      # Saída do WPS
 ├── init/                   # Condições iniciais
-│   ├── FILE:2025-07-* -> ../gfs/
+│   ├── FILE:2025-07-* -> ../ic/
 │   └── brasil_circle.init.nc
 ├── bound/                  # Condições de fronteira
-│   ├── FILE:2025-07-* -> ../gfs/
+│   ├── FILE:2025-07-* -> ../ic/
 │   └── lbc.2025-07-*.nc
 └── run/                    # Execução do modelo
     ├── atmosphere_model -> /path/to/monan/
@@ -404,7 +406,7 @@ ls -la /home/otavio.feitosa/mpas/wps/ungrib/Variable_Tables/Vtable.GFS
 ls -la /home/otavio.feitosa/limited_area/MPAS-Limited-Area/brasil_circle.static.nc
 
 # Verificar arquivos FILE
-ls -la 20250727/gfs/FILE:*
+ls -la 20250727/ic/FILE:*
 ```
 
 #### 4. Erro na Execução do Modelo

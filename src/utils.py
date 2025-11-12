@@ -1,8 +1,8 @@
 """
-Utilitários
+Utilitarios
 ===========
 
-Funções utilitárias para o pipeline MONAN/MPAS
+Funcoes utilitarias para o pipeline MONAN/MPAS
 """
 
 import logging
@@ -20,14 +20,14 @@ def setup_logging(level: int = logging.INFO,
     Configura o sistema de logging
     
     Args:
-        level: Nível de logging
+        level: Nivel de logging
         log_file: Arquivo de log (opcional)
         format_str: Formato das mensagens
     """
     if format_str is None:
         format_str = "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
     
-    # Configuração básica
+    # Configuracao basica
     logging.basicConfig(
         level=level,
         format=format_str,
@@ -58,30 +58,30 @@ def setup_logging(level: int = logging.INFO,
 
 def create_directory_structure(base_dir: Path, run_date: str) -> Dict[str, Path]:
     """
-    Cria a estrutura de diretórios necessária
+    Cria a estrutura de diretorios necessaria
     
     Args:
-        base_dir: Diretório base
+        base_dir: Diretorio base
         run_date: Data da rodada (YYYYMMDD)
         
     Returns:
-        Dicionário com os caminhos criados
+        Dicionario com os caminhos criados
     """
     logger = logging.getLogger(__name__)
     
-    # Diretório principal da rodada
+    # Diretorio principal da rodada
     run_dir = base_dir / run_date
     
-    # Subdiretórios
+    # Subdiretorios
     directories = {
         'main': run_dir,
-        'gfs': run_dir / 'gfs',
+        'ic': run_dir / 'ic',
         'init': run_dir / 'init',
         'boundary': run_dir / 'bound',
         'run': run_dir / 'run'
     }
     
-    # Criar diretórios
+    # Criar diretorios
     for name, path in directories.items():
         path.mkdir(parents=True, exist_ok=True)
         logger.debug(f"[DEBUG] Directory created/verified: {path}")
@@ -92,20 +92,20 @@ def create_directory_structure(base_dir: Path, run_date: str) -> Dict[str, Path]
 
 def create_symbolic_link(source: Path, target: Path, force: bool = True) -> bool:
     """
-    Cria um link simbólico
+    Cria um link simbolico
     
     Args:
-        source: Arquivo/diretório origem
+        source: Arquivo/diretorio origem
         target: Local do link
-        force: Remover link existente se necessário
+        force: Remover link existente se necessario
         
     Returns:
-        True se sucesso, False caso contrário
+        True se sucesso, False caso contrario
     """
     logger = logging.getLogger(__name__)
     
     try:
-        # Remover link existente se necessário
+        # Remover link existente se necessario
         if target.exists() or target.is_symlink():
             if force:
                 target.unlink()
@@ -114,7 +114,7 @@ def create_symbolic_link(source: Path, target: Path, force: bool = True) -> bool
                 logger.warning(f"WARNING: Link already exists: {target}")
                 return False
         
-        # Criar link simbólico
+        # Criar link simbolico
         target.symlink_to(source)
         logger.debug(f"Link criado: {target} -> {source}")
         return True
@@ -131,7 +131,7 @@ def run_command(command: str, cwd: Optional[Path] = None,
     
     Args:
         command: Comando a ser executado
-        cwd: Diretório de trabalho
+        cwd: Diretorio de trabalho
         timeout: Timeout em segundos
         
     Returns:
@@ -176,10 +176,10 @@ def write_namelist(filepath: Path, namelist_dict: Dict) -> bool:
     
     Args:
         filepath: Caminho do arquivo
-        namelist_dict: Dicionário com as configurações
+        namelist_dict: Dicionario com as configuracoes
         
     Returns:
-        True se sucesso, False caso contrário
+        True se sucesso, False caso contrario
     """
     logger = logging.getLogger(__name__)
     
@@ -214,10 +214,10 @@ def write_streams_file(filepath: Path, streams_content: str) -> bool:
     
     Args:
         filepath: Caminho do arquivo
-        streams_content: Conteúdo XML dos streams
+        streams_content: Conteudo XML dos streams
         
     Returns:
-        True se sucesso, False caso contrário
+        True se sucesso, False caso contrario
     """
     logger = logging.getLogger(__name__)
     
@@ -239,11 +239,11 @@ def write_streams_file(filepath: Path, streams_content: str) -> bool:
 
 def calculate_end_time(start_time: str, forecast_days: int) -> str:
     """
-    Calcula o tempo final baseado no tempo inicial e dias de previsão
+    Calcula o tempo final baseado no tempo inicial e dias de previsao
     
     Args:
         start_time: Tempo inicial no formato 'YYYY-MM-DD_HH:MM:SS'
-        forecast_days: Número de dias de previsão
+        forecast_days: Numero de dias de previsao
         
     Returns:
         Tempo final no mesmo formato
@@ -251,7 +251,7 @@ def calculate_end_time(start_time: str, forecast_days: int) -> str:
     # Parse do tempo inicial
     dt = datetime.strptime(start_time, '%Y-%m-%d_%H:%M:%S')
     
-    # Adicionar dias de previsão
+    # Adicionar dias de previsao
     end_dt = dt + timedelta(days=forecast_days)
     
     # Retornar no formato original
@@ -260,14 +260,14 @@ def calculate_end_time(start_time: str, forecast_days: int) -> str:
 
 def validate_file_exists(filepath: Path, min_size: int = 0) -> bool:
     """
-    Valida se um arquivo existe e tem tamanho mínimo
+    Valida se um arquivo existe e tem tamanho minimo
     
     Args:
         filepath: Caminho do arquivo
-        min_size: Tamanho mínimo em bytes
+        min_size: Tamanho minimo em bytes
         
     Returns:
-        True se válido, False caso contrário
+        True se valido, False caso contrario
     """
     if not filepath.exists():
         return False
@@ -280,10 +280,10 @@ def validate_file_exists(filepath: Path, min_size: int = 0) -> bool:
 
 def format_duration(seconds: int) -> str:
     """
-    Formata duração em segundos para formato legível
+    Formata duracao em segundos para formato legivel
     
     Args:
-        seconds: Duração em segundos
+        seconds: Duracao em segundos
         
     Returns:
         String formatada (ex: "2h 30m 45s")
@@ -322,12 +322,12 @@ def get_file_size_mb(filepath: Path) -> float:
 def copy_template_files(template_dir: Path, target_dir: Path, 
                        file_patterns: list) -> None:
     """
-    Copia arquivos template para diretório alvo
+    Copia arquivos template para diretorio alvo
     
     Args:
-        template_dir: Diretório com templates
-        target_dir: Diretório de destino
-        file_patterns: Lista de padrões de arquivos
+        template_dir: Diretorio com templates
+        target_dir: Diretorio de destino
+        file_patterns: Lista de padroes de arquivos
     """
     logger = logging.getLogger(__name__)
     
@@ -341,13 +341,13 @@ def copy_template_files(template_dir: Path, target_dir: Path,
 
 def check_executable_exists(executable_path: Path) -> bool:
     """
-    Verifica se um executável existe e tem permissões
+    Verifica se um executavel existe e tem permissoes
     
     Args:
-        executable_path: Caminho do executável
+        executable_path: Caminho do executavel
         
     Returns:
-        True se válido, False caso contrário
+        True se valido, False caso contrario
     """
     if not executable_path.exists():
         return False

@@ -1,8 +1,8 @@
 """
-Gerador de Condições de Fronteira
+Gerador de Condicoes de Fronteira
 ==================================
 
-Módulo para gerar condições de fronteira do MPAS
+Modulo para gerar condicoes de fronteira do MPAS
 """
 
 import logging
@@ -13,14 +13,14 @@ from .utils import create_symbolic_link, run_command, write_namelist, write_stre
 
 
 class BoundaryConditionsGenerator:
-    """Classe para geração de condições de fronteira"""
+    """Classe para geracao de condicoes de fronteira"""
     
     def __init__(self, config: ConfigLoader):
         """
-        Inicializa o gerador de condições de fronteira
+        Inicializa o gerador de condicoes de fronteira
         
         Args:
-            config: Objeto de configuração
+            config: Objeto de configuracao
         """
         self.config = config
         self.logger = logging.getLogger(__name__)
@@ -29,30 +29,30 @@ class BoundaryConditionsGenerator:
         self.dates = config.get_dates()
         self.physics = config.get_physics_config()
     
-    def _create_file_links(self, boundary_dir: Path, gfs_dir: Path) -> bool:
+    def _create_file_links(self, boundary_dir: Path, ic_dir: Path) -> bool:
         """
         Cria links para arquivos FILE do WPS
         
         Args:
-            boundary_dir: Diretório de condições de fronteira
-            gfs_dir: Diretório com dados GFS processados
+            boundary_dir: Diretorio de condicoes de fronteira
+            ic_dir: Diretorio com dados IC processados (GFS ou ERA5)
             
         Returns:
-            True se sucesso, False caso contrário
+            True se sucesso, False caso contrario
         """
         self.logger.info("Criando links para arquivos FILE...")
         
-        # Buscar arquivos FILE no diretório GFS
+        # Buscar arquivos FILE no diretorio IC
         file_pattern = f"FILE:{self.dates['run_date'][:4]}-*"  # Ex: FILE:2025-*
-        file_list = list(gfs_dir.glob(file_pattern))
+        file_list = list(ic_dir.glob(file_pattern))
         
         if not file_list:
-            self.logger.error(f"Nenhum arquivo FILE encontrado com padrão: {file_pattern}")
+            self.logger.error(f"Nenhum arquivo FILE encontrado com padrao: {file_pattern}")
             return False
         
         self.logger.info(f"Encontrados {len(file_list)} arquivos FILE")
         
-        # Criar links simbólicos
+        # Criar links simbolicos
         success_count = 0
         for file_path in file_list:
             target_path = boundary_dir / file_path.name
@@ -64,13 +64,13 @@ class BoundaryConditionsGenerator:
     
     def _generate_boundary_namelist(self, init_dir: Path) -> dict:
         """
-        Gera namelist para condições de fronteira
+        Gera namelist para condicoes de fronteira
         
         Args:
-            init_dir: Diretório com condições iniciais
+            init_dir: Diretorio com condicoes iniciais
             
         Returns:
-            Dicionário com configurações do namelist
+            Dicionario com configuracoes do namelist
         """
         return {
             'nhyd_model': {
@@ -96,13 +96,13 @@ class BoundaryConditionsGenerator:
     
     def _generate_boundary_streams(self, init_dir: Path) -> str:
         """
-        Gera arquivo de streams para condições de fronteira
+        Gera arquivo de streams para condicoes de fronteira
         
         Args:
-            init_dir: Diretório com condições iniciais
+            init_dir: Diretorio com condicoes iniciais
             
         Returns:
-            Conteúdo XML do arquivo streams
+            Conteudo XML do arquivo streams
         """
         init_filename = self.config.get('paths.init_filename', 'brasil_circle.init.nc')
         init_file = init_dir / init_filename
@@ -125,13 +125,13 @@ class BoundaryConditionsGenerator:
     
     def _link_executable(self, boundary_dir: Path) -> bool:
         """
-        Cria link para executável init_atmosphere_model
+        Cria link para executavel init_atmosphere_model
         
         Args:
-            boundary_dir: Diretório de condições de fronteira
+            boundary_dir: Diretorio de condicoes de fronteira
             
         Returns:
-            True se sucesso, False caso contrário
+            True se sucesso, False caso contrario
         """
         exe_source = Path(self.paths['mpas_init_exe'])
         exe_target = boundary_dir / 'init_atmosphere_model'
@@ -140,21 +140,21 @@ class BoundaryConditionsGenerator:
     
     def _run_boundary_generation(self, boundary_dir: Path) -> bool:
         """
-        Executa geração das condições de fronteira
+        Executa geracao das condicoes de fronteira
         
         Args:
-            boundary_dir: Diretório de condições de fronteira
+            boundary_dir: Diretorio de condicoes de fronteira
             
         Returns:
-            True se sucesso, False caso contrário
+            True se sucesso, False caso contrario
         """
-        self.logger.info("Executando geração de condições de fronteira...")
+        self.logger.info("Executando geracao de condicoes de fronteira...")
         
         command = "./init_atmosphere_model"
         return_code, stdout, stderr = run_command(command, cwd=boundary_dir, timeout=3600)
         
         if return_code != 0:
-            self.logger.error(f"Erro na geração de condições de fronteira: {stderr}")
+            self.logger.error(f"Erro na geracao de condicoes de fronteira: {stderr}")
             return False
         
         # Verificar se arquivos LBC foram criados
@@ -168,32 +168,32 @@ class BoundaryConditionsGenerator:
         
         return True
     
-    def generate(self, boundary_dir: Path, init_dir: Path, gfs_dir: Path) -> bool:
+    def generate(self, boundary_dir: Path, init_dir: Path, ic_dir: Path) -> bool:
         """
-        Gera condições de fronteira do MPAS
+        Gera condicoes de fronteira do MPAS
         
         Args:
-            boundary_dir: Diretório de condições de fronteira
-            init_dir: Diretório com condições iniciais
-            gfs_dir: Diretório com dados GFS processados
+            boundary_dir: Diretorio de condicoes de fronteira
+            init_dir: Diretorio com condicoes iniciais
+            ic_dir: Diretorio com dados IC processados (GFS ou ERA5)
             
         Returns:
-            True se sucesso, False caso contrário
+            True se sucesso, False caso contrario
         """
         self.logger.info("="*50)
-        self.logger.info("GERANDO CONDIÇÕES DE FRONTEIRA")
+        self.logger.info("GERANDO CONDICOES DE FRONTEIRA")
         self.logger.info("="*50)
         
         try:
-            # 1. Verificar se condições iniciais existem
+            # 1. Verificar se condicoes iniciais existem
             init_filename = self.config.get('paths.init_filename', 'brasil_circle.init.nc')
             init_file = init_dir / init_filename
             if not init_file.exists():
-                self.logger.error("Arquivo de condições iniciais não encontrado")
+                self.logger.error("Arquivo de condicoes iniciais nao encontrado")
                 return False
             
             # 2. Criar links para arquivos FILE
-            if not self._create_file_links(boundary_dir, gfs_dir):
+            if not self._create_file_links(boundary_dir, ic_dir):
                 return False
             
             # 3. Gerar namelist
@@ -208,31 +208,31 @@ class BoundaryConditionsGenerator:
             write_streams_file(streams_path, streams_content)
             self.logger.info(f"Streams de fronteira criado: {streams_path}")
             
-            # 5. Linkar executável
+            # 5. Linkar executavel
             if not self._link_executable(boundary_dir):
                 return False
             
-            # 6. Executar geração das condições de fronteira
+            # 6. Executar geracao das condicoes de fronteira
             if not self._run_boundary_generation(boundary_dir):
                 return False
             
-            self.logger.info("SUCCESS: Condições de fronteira geradas com sucesso!")
+            self.logger.info("SUCCESS: Condicoes de fronteira geradas com sucesso!")
             return True
             
         except Exception as e:
-            self.logger.error(f"Erro durante geração de condições de fronteira: {e}")
+            self.logger.error(f"Erro durante geracao de condicoes de fronteira: {e}")
             self.logger.exception("Detalhes do erro:")
             return False
     
     def verify_output(self, boundary_dir: Path) -> bool:
         """
-        Verifica se as condições de fronteira foram geradas corretamente
+        Verifica se as condicoes de fronteira foram geradas corretamente
         
         Args:
-            boundary_dir: Diretório de condições de fronteira
+            boundary_dir: Diretorio de condicoes de fronteira
             
         Returns:
-            True se válido, False caso contrário
+            True se valido, False caso contrario
         """
         lbc_files = list(boundary_dir.glob("lbc.*.nc"))
         
@@ -240,7 +240,7 @@ class BoundaryConditionsGenerator:
             self.logger.error("Nenhum arquivo LBC encontrado")
             return False
         
-        # Verificar se arquivos não estão vazios
+        # Verificar se arquivos nao estao vazios
         empty_files = []
         total_size = 0
         
@@ -255,15 +255,15 @@ class BoundaryConditionsGenerator:
             self.logger.error(f"Arquivos LBC vazios encontrados: {empty_files}")
             return False
         
-        # Verificar número esperado de arquivos (baseado no intervalo de 3h)
+        # Verificar numero esperado de arquivos (baseado no intervalo de 3h)
         forecast_hours = self.config.get('data_sources.forecast_hours')
         expected_files = len(range(forecast_hours['start'], forecast_hours['end'] + 1, 3))
         
-        if len(lbc_files) < expected_files * 0.8:  # Tolerância de 20%
-            self.logger.warning(f"Número de arquivos LBC menor que esperado: {len(lbc_files)} < {expected_files}")
+        if len(lbc_files) < expected_files * 0.8:  # Tolerancia de 20%
+            self.logger.warning(f"Numero de arquivos LBC menor que esperado: {len(lbc_files)} < {expected_files}")
         
         total_size_mb = total_size / (1024 * 1024)
-        self.logger.info(f"SUCCESS: Condições de fronteira válidas: {len(lbc_files)} arquivos, {total_size_mb:.1f} MB")
+        self.logger.info(f"SUCCESS: Condicoes de fronteira validas: {len(lbc_files)} arquivos, {total_size_mb:.1f} MB")
         
         return True
     
@@ -272,7 +272,7 @@ class BoundaryConditionsGenerator:
         Retorna lista de arquivos LBC gerados
         
         Args:
-            boundary_dir: Diretório de condições de fronteira
+            boundary_dir: Diretorio de condicoes de fronteira
             
         Returns:
             Lista ordenada de arquivos LBC
@@ -281,12 +281,12 @@ class BoundaryConditionsGenerator:
     
     def cleanup_temp_files(self, boundary_dir: Path) -> None:
         """
-        Remove arquivos temporários
+        Remove arquivos temporarios
         
         Args:
-            boundary_dir: Diretório de condições de fronteira
+            boundary_dir: Diretorio de condicoes de fronteira
         """
-        self.logger.info("Limpando arquivos temporários...")
+        self.logger.info("Limpando arquivos temporarios...")
         
         # Arquivos para remover
         cleanup_patterns = [
@@ -306,4 +306,4 @@ class BoundaryConditionsGenerator:
                     self.logger.warning(f"Erro ao remover {file_path}: {e}")
         
         if removed_count > 0:
-            self.logger.info(f"Removidos {removed_count} arquivos temporários")
+            self.logger.info(f"Removidos {removed_count} arquivos temporarios")

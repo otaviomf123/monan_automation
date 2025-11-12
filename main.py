@@ -6,9 +6,9 @@ MONAN/MPAS Runner - Script Principal
 Este script executa o pipeline completo do MONAN/MPAS:
 1. Download dos dados GFS
 2. Processamento WPS (ungrib)
-3. Geração das condições iniciais
-4. Geração das condições de fronteira
-5. Execução do modelo
+3. Geracao das condicoes iniciais
+4. Geracao das condicoes de fronteira
+5. Execucao do modelo
 
 Autor: Otavio Feitosa
 Data: 2025
@@ -30,23 +30,23 @@ from src.utils import setup_logging, create_directory_structure
 
 
 def main():
-    """Função principal do pipeline MONAN/MPAS"""
+    """Funcao principal do pipeline MONAN/MPAS"""
     
     # Argumentos da linha de comando
     parser = argparse.ArgumentParser(description='MONAN/MPAS Pipeline Runner')
     parser.add_argument('--config', '-c', default='config.yml', 
-                       help='Arquivo de configuração (default: config.yml)')
+                       help='Arquivo de configuracao (default: config.yml)')
     parser.add_argument('--step', '-s', 
                        choices=['download', 'wps', 'init', 'boundary', 'run', 'convert', 'all'],
                        default='all',
-                       help='Etapa específica para executar (default: all)')
+                       help='Etapa especifica para executar (default: all)')
     parser.add_argument('--verbose', '-v', action='store_true',
                        help='Modo verboso')
     
     args = parser.parse_args()
     
     try:
-        # Carregar configuração
+        # Carregar configuracao
         config = ConfigLoader(args.config)
         
         # Configurar logging
@@ -62,7 +62,7 @@ def main():
         logger.info("INICIANDO PIPELINE MONAN/MPAS")
         logger.info("="*60)
         
-        # Criar estrutura de diretórios
+        # Criar estrutura de diretorios
         base_dir = Path(config.get('general.base_dir'))
         run_date = config.get('dates.run_date')
         
@@ -71,30 +71,43 @@ def main():
         
         # Executar etapas
         if args.step in ['download', 'all']:
-            logger.info("ETAPA 1: Download dos dados GFS")
-            downloader = GFSDownloader(config)
-            if not downloader.download_gfs_data(dirs['gfs']):
-                logger.error("FAILED: GFS download failed")
+            data_source = config.get_data_source_type()
+            logger.info(f"ETAPA 1: Download dos dados {data_source.upper()}")
+            
+            if data_source == 'era5':
+                from src.era5_downloader import ERA5Downloader
+                downloader = ERA5Downloader(config)
+                if not downloader.download_era5_data(dirs['ic']):
+                    logger.error("FAILED: ERA5 download failed")
+                    sys.exit(1)
+            elif data_source == 'gfs':
+                downloader = GFSDownloader(config)
+                if not downloader.download_gfs_data(dirs['ic']):
+                    logger.error("FAILED: GFS download failed")
+                    sys.exit(1)
+            else:
+                logger.error(f"FAILED: Invalid data source type: {data_source}")
+                logger.error("Supported types: 'gfs', 'era5'")
                 sys.exit(1)
         
         if args.step in ['wps', 'all']:
             logger.info("ETAPA 2: Processamento WPS (ungrib)")
             wps = WPSProcessor(config)
-            if not wps.process(dirs['gfs']):
+            if not wps.process(dirs['ic']):
                 logger.error("FAILED: WPS processing failed")
                 sys.exit(1)
         
         if args.step in ['init', 'all']:
             logger.info("STEP 3: Initial conditions generation")
             init_gen = InitialConditionsGenerator(config)
-            if not init_gen.generate(dirs['init'], dirs['gfs']):
+            if not init_gen.generate(dirs['init'], dirs['ic']):
                 logger.error("FAILED: Initial conditions generation failed")
                 sys.exit(1)
         
         if args.step in ['boundary', 'all']:
             logger.info("STEP 4: Boundary conditions generation")
             boundary_gen = BoundaryConditionsGenerator(config)
-            if not boundary_gen.generate(dirs['boundary'], dirs['init'], dirs['gfs']):
+            if not boundary_gen.generate(dirs['boundary'], dirs['init'], dirs['ic']):
                 logger.error("FAILED: Boundary conditions generation failed")
                 sys.exit(1)
         
@@ -106,7 +119,7 @@ def main():
                 sys.exit(1)
         
         if args.step in ['convert', 'all']:
-            # Verificar se conversão está habilitada
+            # Verificar se conversao esta habilitada
             conversion_enabled = config.get('conversion.enabled', True)
             if conversion_enabled:
                 logger.info("STEP 6: Conversion to regular grid")

@@ -63,7 +63,7 @@ class InitialConditionsGenerator:
     >>> from src.config_loader import ConfigLoader
     >>> config = ConfigLoader('config.yml')
     >>> generator = InitialConditionsGenerator(config)
-    >>> success = generator.generate(init_dir, gfs_dir)
+    >>> success = generator.generate(init_dir, ic_dir)
     """
     
     def __init__(self, config: ConfigLoader) -> None:
@@ -102,7 +102,7 @@ class InitialConditionsGenerator:
         self.logger.info(f"[INFO] Output filename: {init_filename}")
         self.logger.info(f"[INFO] Vertical levels: {self.physics.get('nvertlevels', 'Not configured')}")
     
-    def _create_file_links(self, init_dir: Path, gfs_dir: Path) -> bool:
+    def _create_file_links(self, init_dir: Path, ic_dir: Path) -> bool:
         """
         Create symbolic links to WPS FILE outputs in initialization directory.
         
@@ -114,7 +114,7 @@ class InitialConditionsGenerator:
         ----------
         init_dir : Path
             Target directory for initial conditions generation
-        gfs_dir : Path
+        ic_dir : Path
             Source directory containing WPS FILE:* outputs
             
         Returns
@@ -135,10 +135,10 @@ class InitialConditionsGenerator:
         file_pattern = f"FILE:{run_year}-*"
         
         self.logger.debug(f"[DEBUG] Searching pattern: {file_pattern}")
-        self.logger.debug(f"[DEBUG] In directory: {gfs_dir}")
+        self.logger.debug(f"[DEBUG] In directory: {ic_dir}")
         
         # Find FILE outputs from WPS
-        file_list = list(gfs_dir.glob(file_pattern))
+        file_list = list(ic_dir.glob(file_pattern))
         
         if not file_list:
             self.logger.error(f"FAILED: No WPS FILE outputs found with pattern: {file_pattern}")
@@ -525,7 +525,7 @@ class InitialConditionsGenerator:
         
         return True
     
-    def generate(self, init_dir: Path, gfs_dir: Path) -> bool:
+    def generate(self, init_dir: Path, ic_dir: Path) -> bool:
         """
         Execute complete initial conditions generation workflow.
         
@@ -542,7 +542,7 @@ class InitialConditionsGenerator:
         ----------
         init_dir : Path
             Target directory for initialization workflow
-        gfs_dir : Path
+        ic_dir : Path
             Source directory containing WPS FILE:* outputs
             
         Returns
@@ -562,7 +562,7 @@ class InitialConditionsGenerator:
         self.logger.info("STARTING INITIAL CONDITIONS GENERATION")
         self.logger.info("=" * 60)
         self.logger.info(f"[INFO] Working directory: {init_dir}")
-        self.logger.info(f"[INFO] WPS data source: {gfs_dir}")
+        self.logger.info(f"[INFO] WPS data source: {ic_dir}")
         
         # Ensure working directory exists
         init_dir.mkdir(parents=True, exist_ok=True)
@@ -570,7 +570,7 @@ class InitialConditionsGenerator:
         try:
             # Step 1: Create WPS FILE links
             self.logger.info("[INFO] Step 1/6: Creating WPS FILE links...")
-            if not self._create_file_links(init_dir, gfs_dir):
+            if not self._create_file_links(init_dir, ic_dir):
                 self.logger.error("FAILED: Could not create WPS FILE links")
                 return False
             

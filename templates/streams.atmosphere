@@ -1,24 +1,57 @@
 <streams>
 <immutable_stream name="input"
-                 type="input"
-                 precision="single"
-                 io_type="pnetcdf,cdf5"
-                 filename_template="brasil_circle.init.nc"
-                 input_interval="initial_only" />
+                  type="input"
+                  io_type="pnetcdf,cdf5"
+                  filename_template="brasil_circle.init.nc"
+                  input_interval="initial_only" />
+
 <immutable_stream name="restart"
-                 type="input;output"
-                 precision="single"
-                 io_type="pnetcdf,cdf5"
-                 filename_template="restart.$Y-$M-$D_$h.$m.$s.nc"
-                 filename_interval="output_interval"
-                 input_interval="initial_only"
-                 output_interval="none" />
-<immutable_stream name="lbc"
-                 type="input"
-                 precision="single" 
-                 io_type="pnetcdf,cdf5"
-                 filename_template="lbc.$Y-$M-$D_$h.00.00.nc"
-                 filename_interval="none"
-                 packages="lbcs"
-                 input_interval="3:00:00" />
+                  type="input;output"
+                  filename_template="restart.$Y-$M-$D_$h.$m.$s.nc"
+                  input_interval="initial_only"
+                  output_interval="15000_00:00:00" />
+
+<stream name="output"
+        type="output"
+        io_type="pnetcdf,cdf5"
+        filename_template="history.$Y-$M-$D_$h.$m.$s.nc"
+        clobber_mode="truncate"
+        output_interval="01:00:00" >
+
+	<file name="stream_list.atmosphere.output"/>
+</stream>
+
+<stream name="diagnostics"
+        type="output"
+        io_type="pnetcdf,cdf5"
+        filename_template="diag.$Y-$M-$D_$h.$m.$s.nc"
+        clobber_mode="truncate"
+        output_interval="01:00:00" >
+
+	<file name="stream_list.atmosphere.diagnostics"/>
+</stream>
+
+<stream name="surface"
+        type="input"
+        filename_template="x1.163842.sfc_update.nc"
+        filename_interval="none"
+        input_interval="none" >
+
+	<file name="stream_list.atmosphere.surface"/>
+</stream>
+
+<immutable_stream name="iau"
+                  type="input"
+                  filename_template="x1.163842.AmB.$Y-$M-$D_$h.$m.$s.nc"
+                  filename_interval="none"
+                  packages="iau"
+                  input_interval="initial_only" />
+
+<immutable_stream name="lbc_in"
+                  type="input"
+                  filename_template="lbc.$Y-$M-$D_$h.$m.$s.nc"
+                  filename_interval="input_interval"
+                  packages="limited_area"
+                  input_interval="3:00:00" />
+
 </streams>

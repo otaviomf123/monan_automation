@@ -60,7 +60,7 @@ class WPSProcessor:
     >>> from src.config_loader import ConfigLoader
     >>> config = ConfigLoader('config.yml')
     >>> wps = WPSProcessor(config)
-    >>> success = wps.process(Path('./gfs_data'))
+    >>> success = wps.process(Path('./ic_data'))
     """
     
     def __init__(self, config: ConfigLoader) -> None:
@@ -98,11 +98,12 @@ class WPSProcessor:
     def _create_wps_links(self, work_dir: Path) -> bool:
         """
         Create symbolic links for required WPS executables and files.
+        Uses Vtable.ECMWF for ERA5 data, Vtable.GFS for GFS data.
         
         This method creates symbolic links in the working directory for:
         - link_grib.csh: Script to link GRIB files
         - ungrib.exe: UNGRIB executable
-        - Vtable: GFS variable translation table
+        - Vtable: Variable translation table (GFS or ECMWF based on data source)
         
         Parameters
         ----------
@@ -121,11 +122,17 @@ class WPSProcessor:
         """
         self.logger.info("[INFO] Creating WPS symbolic links...")
         
+        # Get appropriate Vtable based on data source
+        vtable_path = self.config.get_vtable_path()
+        data_source = self.config.get_data_source_type()
+        
+        self.logger.info(f"[INFO] Using Vtable for {data_source.upper()} data: {vtable_path}")
+        
         # Define required links: (source, target)
         required_links = [
             (self.paths['link_grib'], work_dir / 'link_grib.csh'),
             (self.paths['ungrib_exe'], work_dir / 'ungrib.exe'), 
-            (self.paths['vtable_gfs'], work_dir / 'Vtable')
+            (vtable_path, work_dir / 'Vtable')  # CHANGED: Use dynamic Vtable
         ]
         
         success = True
@@ -215,9 +222,10 @@ class WPSProcessor:
         
         return namelist_config
     
-    def _link_grib_files(self, work_dir: Path, gfs_dir: Path) -> bool:
+    def _link_grib_files(self, work_dir: Path, ic_dir: Path) -> bool:
         """
         Execute link_grib.csh script to prepare GRIB files for ungrib.
+        Handles both GFS and ERA5 GRIB formats.
         
         The link_grib.csh script creates numbered symbolic links (GRIBFILE.AAA,
         GRIBFILE.AAB, etc.) that ungrib can process sequentially.
@@ -226,8 +234,8 @@ class WPSProcessor:
         ----------
         work_dir : Path
             Working directory containing link_grib.csh
-        gfs_dir : Path
-            Directory containing GFS GRIB2 files
+        ic_dir : Path
+            Directory containing GRIB files (GFS or ERA5)
             
         Returns
         -------
@@ -242,17 +250,25 @@ class WPSProcessor:
         """
         self.logger.info("[INFO] Executing link_grib.csh to prepare GRIB files...")
         
-        # Find available GRIB files
-        grib_patterns = ["gfs.*.pgrb2.*", "gfs.*.grb2"]
-        grib_files = []
+        # Detect data source and use appropriate patterns
+        data_source = self.config.get_data_source_type()
         
+        if data_source == 'era5':
+            grib_patterns = ["era5_*.grib", "era_*.grib"]
+            self.logger.info("[INFO] Using ERA5 GRIB patterns")
+        else:
+            grib_patterns = ["gfs.*.pgrb2.*", "gfs.*.grb2"]
+            self.logger.info("[INFO] Using GFS GRIB patterns")
+        
+        # Find available GRIB files
+        grib_files = []
         for pattern in grib_patterns:
-            grib_files.extend(gfs_dir.glob(pattern))
+            grib_files.extend(ic_dir.glob(pattern))
         
         if not grib_files:
-            self.logger.error("FAILED: No GRIB files found in GFS directory")
+            self.logger.error("FAILED: No GRIB files found in directory")
             self.logger.error(f"[DEBUG] Searched patterns: {grib_patterns}")
-            self.logger.error(f"[DEBUG] In directory: {gfs_dir}")
+            self.logger.error(f"[DEBUG] In directory: {ic_dir}")
             return False
         
         # Sort files to ensure consistent processing order
@@ -262,9 +278,13 @@ class WPSProcessor:
         self.logger.debug(f"[DEBUG] First file: {grib_files[0].name}")
         self.logger.debug(f"[DEBUG] Last file: {grib_files[-1].name}")
         
-        # Execute link_grib.csh script
+        # Execute link_grib.csh script with appropriate pattern
         # Note: Using shell=True to handle csh script execution
-        grib_pattern = str(gfs_dir / "gfs.*.pgrb2.*")
+        if data_source == 'era5':
+            grib_pattern = str(ic_dir / "era*.grib")  # Match both era5_* and era_*
+        else:
+            grib_pattern = str(ic_dir / "gfs.*.pgrb2.*")
+        
         command = f"./link_grib.csh {grib_pattern}"
         
         try:
@@ -408,7 +428,7 @@ class WPSProcessor:
         
         return True
     
-    def process(self, gfs_dir: Path) -> bool:
+    def process(self, ic_dir: Path) -> bool:
         """
         Execute complete WPS processing workflow.
         
@@ -421,8 +441,8 @@ class WPSProcessor:
         
         Parameters
         ----------
-        gfs_dir : Path
-            Directory containing GFS GRIB2 files to process
+        ic_dir : Path
+            Directory containing GRIB2 files to process (GFS or ERA5)
             
         Returns
         -------
@@ -431,7 +451,7 @@ class WPSProcessor:
             
         Notes
         -----
-        - Uses gfs_dir as working directory for all operations
+        - Uses ic_dir as working directory for all operations
         - Creates temporary files that can be cleaned up afterward
         - Typical processing time: 10-20 minutes for 10-day forecast
         - Requires ~2-5 GB additional disk space for intermediate files
@@ -439,10 +459,10 @@ class WPSProcessor:
         self.logger.info("=" * 60)
         self.logger.info("STARTING WPS PROCESSING WORKFLOW")
         self.logger.info("=" * 60)
-        self.logger.info(f"[INFO] GFS data directory: {gfs_dir}")
+        self.logger.info(f"[INFO] IC data directory: {ic_dir}")
         
-        # Use GFS directory as working directory
-        work_dir = gfs_dir
+        # Use IC directory as working directory
+        work_dir = ic_dir
         
         try:
             # Step 1: Create WPS symbolic links
@@ -464,7 +484,7 @@ class WPSProcessor:
             
             # Step 3: Link GRIB files
             self.logger.info("[INFO] Step 3/4: Linking GRIB files...")
-            if not self._link_grib_files(work_dir, gfs_dir):
+            if not self._link_grib_files(work_dir, ic_dir):
                 self.logger.error("FAILED: Could not link GRIB files")
                 return False
             
@@ -614,8 +634,8 @@ class WPSProcessor:
         Examples
         --------
         >>> wps = WPSProcessor(config)
-        >>> wps.process(gfs_dir)
-        >>> outputs = wps.get_file_outputs(gfs_dir)
+        >>> wps.process(ic_dir)
+        >>> outputs = wps.get_file_outputs(ic_dir)
         >>> print(f"Generated {len(outputs)} FILE outputs")
         """
         file_outputs = list(work_dir.glob("FILE:*"))

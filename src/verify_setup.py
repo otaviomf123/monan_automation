@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 """
-Script de Verificação do Setup MONAN/MPAS
+Script de Verificacao do Setup MONAN/MPAS
 ==========================================
 
-Verifica se todos os caminhos e executáveis estão configurados corretamente
+Verifica se todos os caminhos e executaveis estao configurados corretamente
 """
 
 import logging
@@ -23,10 +23,10 @@ except ImportError:
 
 
 def verify_executables(config: ConfigLoader) -> bool:
-    """Verifica se todos os executáveis existem e são executáveis"""
+    """Verifica se todos os executaveis existem e sao executaveis"""
     
     logger = logging.getLogger(__name__)
-    logger.info("Verificando executáveis...")
+    logger.info("Verificando executaveis...")
     
     executables = {
         'ungrib.exe': config.get('paths.ungrib_exe'),
@@ -38,7 +38,7 @@ def verify_executables(config: ConfigLoader) -> bool:
     all_ok = True
     for name, path in executables.items():
         if path is None:
-            logger.error(f"ERROR: Caminho não configurado: {name}")
+            logger.error(f"ERROR: Caminho nao configurado: {name}")
             all_ok = False
             continue
             
@@ -46,7 +46,7 @@ def verify_executables(config: ConfigLoader) -> bool:
         if check_executable_exists(exe_path):
             logger.info(f"SUCCESS: {name}: {path}")
         else:
-            logger.error(f"ERROR: {name}: Não encontrado ou sem permissão de execução - {path}")
+            logger.error(f"ERROR: {name}: Nao encontrado ou sem permissao de execucao - {path}")
             all_ok = False
     
     return all_ok
@@ -60,15 +60,16 @@ def verify_data_files(config: ConfigLoader) -> bool:
     
     data_files = {
         'Vtable.GFS': config.get('paths.vtable_gfs'),
+        'Vtable.ECMWF': config.get('paths.vtable_ecmwf'),  # NEW: ERA5 support
         'brasil_circle.static.nc': config.get('paths.static_file'),
-        'Diretório geográfico WPS': config.get('paths.wps_geog_path'),
-        'Diretório geográfico MPAS': config.get('paths.geog_data_path')
+        'Diretorio geografico WPS': config.get('paths.wps_geog_path'),
+        'Diretorio geografico MPAS': config.get('paths.geog_data_path')
     }
     
     all_ok = True
     for name, path in data_files.items():
         if path is None:
-            logger.error(f"ERROR: Caminho não configurado: {name}")
+            logger.error(f"ERROR: Caminho nao configurado: {name}")
             all_ok = False
             continue
             
@@ -78,19 +79,19 @@ def verify_data_files(config: ConfigLoader) -> bool:
                 size_mb = file_path.stat().st_size / (1024 * 1024)
                 logger.info(f"SUCCESS: {name}: {path} ({size_mb:.1f} MB)")
             else:
-                logger.info(f"SUCCESS: {name}: {path} (diretório)")
+                logger.info(f"SUCCESS: {name}: {path} (diretorio)")
         else:
-            logger.error(f"ERROR: {name}: Não encontrado - {path}")
+            logger.error(f"ERROR: {name}: Nao encontrado - {path}")
             all_ok = False
     
     return all_ok
 
 
 def verify_directories(config: ConfigLoader) -> bool:
-    """Verifica se diretórios essenciais existem"""
+    """Verifica se diretorios essenciais existem"""
     
     logger = logging.getLogger(__name__)
-    logger.info("Verificando diretórios...")
+    logger.info("Verificando diretorios...")
     
     directories = {
         'Base de trabalho': config.get('general.base_dir'),
@@ -101,7 +102,7 @@ def verify_directories(config: ConfigLoader) -> bool:
     all_ok = True
     for name, path in directories.items():
         if path is None:
-            logger.error(f"ERROR: Caminho não configurado: {name}")
+            logger.error(f"ERROR: Caminho nao configurado: {name}")
             all_ok = False
             continue
             
@@ -109,7 +110,7 @@ def verify_directories(config: ConfigLoader) -> bool:
         if dir_path.exists() and dir_path.is_dir():
             logger.info(f"SUCCESS: {name}: {path}")
         else:
-            logger.error(f"ERROR: {name}: Diretório não encontrado - {path}")
+            logger.error(f"ERROR: {name}: Diretorio nao encontrado - {path}")
             all_ok = False
     
     return all_ok
@@ -123,10 +124,10 @@ def verify_monan_files(config: ConfigLoader) -> bool:
     
     monan_dir = Path(config.get('paths.monan_dir', ''))
     if not monan_dir.exists():
-        logger.error(f"ERROR: Diretório MONAN não encontrado: {monan_dir}")
+        logger.error(f"ERROR: Diretorio MONAN nao encontrado: {monan_dir}")
         return False
     
-    # Verificar padrões de arquivos esperados
+    # Verificar padroes de arquivos esperados
     required_patterns = ['*DBL', '*TBL', 'RRTMG_*']
     
     all_ok = True
@@ -136,7 +137,7 @@ def verify_monan_files(config: ConfigLoader) -> bool:
             logger.info(f"SUCCESS: Arquivos {pattern}: {len(files)} encontrados")
         else:
             logger.warning(f"WARNING:  Nenhum arquivo {pattern} encontrado em {monan_dir}")
-            # Não marca como erro fatal pois podem estar em subdiretórios
+            # Nao marca como erro fatal pois podem estar em subdiretorios
     
     return all_ok
 
@@ -159,7 +160,7 @@ def verify_stream_files(config: ConfigLoader) -> bool:
     
     for name, path in stream_files.items():
         if path is None:
-            logger.warning(f"WARNING:  Caminho não configurado: {name}")
+            logger.warning(f"WARNING:  Caminho nao configurado: {name}")
             continue
             
         file_path = Path(path)
@@ -167,7 +168,7 @@ def verify_stream_files(config: ConfigLoader) -> bool:
             logger.info(f"SUCCESS: {name}: {path}")
             found_count += 1
         else:
-            logger.warning(f"WARNING:  {name}: Não encontrado - {path}")
+            logger.warning(f"WARNING:  {name}: Nao encontrado - {path}")
     
     if found_count == 0:
         logger.error("ERROR: Nenhum arquivo de streams encontrado")
@@ -179,86 +180,133 @@ def verify_stream_files(config: ConfigLoader) -> bool:
 
 
 def verify_conversion_dependencies() -> bool:
-    """Verifica se dependências para conversão estão disponíveis"""
+    """Verifica se dependencias para conversao estao disponiveis"""
     
     logger = logging.getLogger(__name__)
-    logger.info("Verificando dependências para conversão...")
+    logger.info("Verificando dependencias para conversao...")
     
     if not CONVERSION_AVAILABLE:
-        logger.error("ERROR: Dependências para conversão não encontradas")
+        logger.error("ERROR: Dependencias para conversao nao encontradas")
         logger.error("   Instale: pip install xarray numpy scikit-learn netCDF4")
         return False
     
-    logger.info("SUCCESS: Dependências para conversão disponíveis")
+    logger.info("SUCCESS: Dependencias para conversao disponiveis")
+    return True
+
+
+def verify_era5_dependencies(config: ConfigLoader) -> bool:
+    """Verifica se dependencias para ERA5 estao disponiveis quando necessario"""
+    
+    logger = logging.getLogger(__name__)
+    logger.info("Verificando dependencias para ERA5...")
+    
+    data_source = config.get_data_source_type()
+    
+    if data_source != 'era5':
+        logger.info("INFO: ERA5 nao esta configurado como fonte de dados")
+        return True
+    
+    # Verificar se cdsapi esta disponivel
+    try:
+        import cdsapi
+        logger.info("SUCCESS: cdsapi disponivel")
+    except ImportError:
+        logger.error("ERROR: cdsapi nao encontrado")
+        logger.error("   Instale: pip install 'cdsapi>=0.7.4'")
+        return False
+    
+    # Verificar se arquivo .cdsapirc existe
+    import os
+    cdsapirc_path = os.path.expanduser("~/.cdsapirc")
+    if not Path(cdsapirc_path).exists():
+        logger.error("ERROR: Arquivo ~/.cdsapirc nao encontrado")
+        logger.error("   Configure sua conta CDS em: https://cds.climate.copernicus.eu/how-to-api")
+        return False
+    else:
+        logger.info(f"SUCCESS: Arquivo ~/.cdsapirc encontrado: {cdsapirc_path}")
+    
+    # Verificar se Vtable.ECMWF esta configurado e existe
+    vtable_ecmwf = config.get('paths.vtable_ecmwf')
+    if not vtable_ecmwf:
+        logger.error("ERROR: paths.vtable_ecmwf nao configurado para ERA5")
+        return False
+    
+    if not Path(vtable_ecmwf).exists():
+        logger.error(f"ERROR: Vtable.ECMWF nao encontrado: {vtable_ecmwf}")
+        logger.error("   Certifique-se de que WPS esta instalado com Vtable.ECMWF")
+        return False
+    
+    logger.info("SUCCESS: Dependencias ERA5 verificadas")
     return True
 
 
 def verify_config_consistency(config: ConfigLoader) -> bool:
-    """Verifica consistência da configuração"""
+    """Verifica consistencia da configuracao"""
     
     logger = logging.getLogger(__name__)
-    logger.info("Verificando consistência da configuração...")
+    logger.info("Verificando consistencia da configuracao...")
     
-    # Verificar se datas estão consistentes
+    # Verificar se datas estao consistentes
     start_time = config.get('dates.start_time')
     end_time = config.get('dates.end_time')
     run_date = config.get('dates.run_date')
     
     if not all([start_time, end_time, run_date]):
-        logger.error("ERROR: Configurações de data incompletas")
+        logger.error("ERROR: Configuracoes de data incompletas")
         return False
     
-    # Verificar se run_date está consistente com start_time
+    # Verificar se run_date esta consistente com start_time
     if run_date not in start_time:
-        logger.warning(f"WARNING:  run_date ({run_date}) pode não estar consistente com start_time ({start_time})")
+        logger.warning(f"WARNING:  run_date ({run_date}) pode nao estar consistente com start_time ({start_time})")
     
-    # Verificar configurações de domínio
+    # Verificar configuracoes de dominio
     domain_config = config.get_domain_config()
     required_domain_keys = ['dx', 'dy', 'ref_lat', 'ref_lon', 'e_we', 'e_sn']
     
     missing_domain = [key for key in required_domain_keys if key not in domain_config]
     if missing_domain:
-        logger.error(f"ERROR: Configurações de domínio faltantes: {missing_domain}")
+        logger.error(f"ERROR: Configuracoes de dominio faltantes: {missing_domain}")
         return False
     
-    # Verificar configurações de física
+    # Verificar configuracoes de fisica
     physics_config = config.get_physics_config()
     required_physics_keys = ['nvertlevels', 'dt', 'physics_suite']
     
     missing_physics = [key for key in required_physics_keys if key not in physics_config]
     if missing_physics:
-        logger.error(f"ERROR: Configurações de física faltantes: {missing_physics}")
+        logger.error(f"ERROR: Configuracoes de fisica faltantes: {missing_physics}")
         return False
     
-    logger.info("SUCCESS: Configuração consistente")
+    logger.info("SUCCESS: Configuracao consistente")
     return True
 
 
 def main():
-    """Função principal de verificação"""
+    """Funcao principal de verificacao"""
     
     # Configurar logging
     setup_logging(level=logging.INFO)
     logger = logging.getLogger(__name__)
     
     logger.info("="*60)
-    logger.info("VERIFICAÇÃO DO SETUP MONAN/MPAS")
+    logger.info("VERIFICACAO DO SETUP MONAN/MPAS")
     logger.info("="*60)
     
     try:
-        # Carregar configuração
+        # Carregar configuracao
         config = ConfigLoader('config.yml')
-        logger.info(f"SUCCESS: Arquivo de configuração carregado: config.yml")
+        logger.info(f"SUCCESS: Arquivo de configuracao carregado: config.yml")
         
-        # Executar verificações
+        # Executar verificacoes
         checks = [
-            ("Configuração", verify_config_consistency),
-            ("Diretórios", verify_directories),
-            ("Executáveis", verify_executables),
+            ("Configuracao", verify_config_consistency),
+            ("Diretorios", verify_directories),
+            ("Executaveis", verify_executables),
             ("Arquivos de dados", verify_data_files),
             ("Arquivos MONAN", verify_monan_files),
             ("Arquivos de streams", verify_stream_files),
-            ("Dependências conversão", verify_conversion_dependencies)
+            ("Dependencias conversao", verify_conversion_dependencies),
+            ("Dependencias ERA5", verify_era5_dependencies)  # NEW
         ]
         
         results = {}
@@ -268,7 +316,7 @@ def main():
         
         # Resumo final
         logger.info("\n" + "="*60)
-        logger.info("RESUMO DA VERIFICAÇÃO")
+        logger.info("RESUMO DA VERIFICACAO")
         logger.info("="*60)
         
         all_passed = True
@@ -281,20 +329,20 @@ def main():
         logger.info("="*60)
         
         if all_passed:
-            logger.info("SUCCESS: TODAS AS VERIFICAÇÕES PASSARAM!")
+            logger.info("SUCCESS: TODAS AS VERIFICACOES PASSARAM!")
             logger.info("Sistema pronto para executar o MONAN/MPAS")
             return 0
         else:
-            logger.error("ERROR: ALGUMAS VERIFICAÇÕES FALHARAM")
+            logger.error("ERROR: ALGUMAS VERIFICACOES FALHARAM")
             logger.error("Corrija os problemas antes de executar o pipeline")
             return 1
             
     except FileNotFoundError:
-        logger.error("ERROR: Arquivo config.yml não encontrado")
-        logger.info("Execute: python setup.py para criar a configuração inicial")
+        logger.error("ERROR: Arquivo config.yml nao encontrado")
+        logger.info("Execute: python setup.py para criar a configuracao inicial")
         return 1
     except Exception as e:
-        logger.error(f"ERROR: Erro durante verificação: {e}")
+        logger.error(f"ERROR: Erro durante verificacao: {e}")
         logger.exception("Detalhes do erro:")
         return 1
 

@@ -1,477 +1,737 @@
 """
-Conversor de Dados MPAS
-========================
+MPAS Data Converter
+===================
 
-Módulo para converter dados MPAS de grade não estruturada para grade regular
+Module for converting MPAS unstructured grid data to regular lat-lon grid.
+Generates NetCDF files compatible with CDO and GrADS.
+
+Features:
+- Automated 3D variable detection
+- Nearest neighbor interpolation
+- CF-compliant NetCDF output
+- CDO and GrADS compatibility
+
+Author: Otavio Feitosa
+Date: 2025
 """
 
 import logging
 import numpy as np
 import xarray as xr
 from pathlib import Path
-from sklearn.neighbors import BallTree
-from typing import Optional, Dict, Tuple, List
-import os
+from typing import Dict, List, Tuple, Optional
+from datetime import datetime
 
-from .config_loader import ConfigLoader
-from .utils import validate_file_exists, get_file_size_mb
+try:
+    from sklearn.neighbors import BallTree
+    SKLEARN_AVAILABLE = True
+except ImportError:
+    SKLEARN_AVAILABLE = False
+    logging.warning("scikit-learn not available. Install with: pip install scikit-learn")
 
 
 class MPASDataConverter:
-    """Classe para conversão de dados MPAS para grade regular"""
+    """
+    Converts MPAS unstructured mesh data to regular lat-lon grid.
     
-    def __init__(self, config: ConfigLoader):
+    This converter handles atmospheric model output from MPAS, performing
+    spatial interpolation from the native unstructured mesh to a regular
+    latitude-longitude grid suitable for analysis and visualization.
+    
+    Attributes
+    ----------
+    config : ConfigLoader
+        Configuration object containing conversion parameters
+    logger : logging.Logger
+        Logger instance for this module
+    lat_resolution : float
+        Latitude grid spacing in degrees
+    lon_resolution : float
+        Longitude grid spacing in degrees
+    """
+    
+    def __init__(self, config):
         """
-        Inicializa o conversor de dados
+        Initialize the MPAS data converter.
         
-        Args:
-            config: Objeto de configuração
+        Parameters
+        ----------
+        config : ConfigLoader
+            Configuration object containing conversion settings
         """
         self.config = config
         self.logger = logging.getLogger(__name__)
         
-        # Configurações de conversão
-        self.conversion_config = config.get('conversion', {})
-        self.grid_config = self.conversion_config.get('grid', {})
+        # Get conversion parameters
+        conversion_config = config.get('conversion', {})
+        self.lat_resolution = conversion_config.get('lat_resolution', 0.25)
+        self.lon_resolution = conversion_config.get('lon_resolution', 0.25)
         
-        # Configurações padrão se não estiverem no config
-        self.lon_min = self.grid_config.get('lon_min', -90)
-        self.lon_max = self.grid_config.get('lon_max', -20)
-        self.lat_min = self.grid_config.get('lat_min', -45)
-        self.lat_max = self.grid_config.get('lat_max', 25)
-        self.resolution = self.grid_config.get('resolution', 0.1)
-        self.max_dist_km = self.grid_config.get('max_dist_km', 30)
+        self.logger.info(f"MPAS Data Converter initialized")
+        self.logger.info(f"Grid resolution: {self.lat_resolution} deg x {self.lon_resolution} deg")
         
-    def setup_interpolation_weights(self, static_file: Path, weights_dir: Path) -> Dict:
-        """
-        Configura os pesos de interpolação e salva para reutilização
-        
-        Args:
-            static_file: Arquivo estático MPAS
-            weights_dir: Diretório para salvar os pesos
-            
-        Returns:
-            Dicionário com informações da grade regular
-        """
-        self.logger.info("[INFO] Setting up interpolation weights...")
-        
-        # Criar diretório se não existir
-        weights_dir.mkdir(parents=True, exist_ok=True)
-        
-        # Carregar arquivo estático
-        with xr.open_dataset(static_file) as ds_static:
-            # Coordenadas MPAS
-            lat_mpas = np.rad2deg(ds_static['latCell'].values)
-            lon_mpas = np.rad2deg(ds_static['lonCell'].values)
-            lon_mpas = np.where(lon_mpas > 180, lon_mpas - 360, lon_mpas)
-        
-        # Construir BallTree
-        coords = np.column_stack([np.deg2rad(lat_mpas), np.deg2rad(lon_mpas)])
-        tree_mpas = BallTree(coords, metric='haversine')
-        
-        # Grade regular
-        lon_reg = np.arange(self.lon_min, self.lon_max, self.resolution)
-        lat_reg = np.arange(self.lat_min, self.lat_max, self.resolution)
-        lon_reg_2d, lat_reg_2d = np.meshgrid(lon_reg, lat_reg)
-        
-        # Query BallTree
-        coords_reg = np.column_stack([
-            np.deg2rad(lat_reg_2d.ravel()), 
-            np.deg2rad(lon_reg_2d.ravel())
-        ])
-        
-        self.logger.info("[INFO] Calculating distances and indices...")
-        dists, ilocs = tree_mpas.query(coords_reg, k=3)
-        dists_km = dists * 6371  # converter para km
-        
-        # Calcular pesos de distância inversa
-        self.logger.info("Calculando pesos...")
-        pesos_inv = 1.0 / (dists_km**2 + 1e-10)
-        pesos_inv = pesos_inv / np.sum(pesos_inv, axis=-1)[:, np.newaxis]
-        
-        # Salvar arquivos
-        ilocs_file = weights_dir / "ilocs_interpolation.npy"
-        dists_file = weights_dir / "dists_interpolation.npy"
-        pesos_file = weights_dir / "pesos_interpolation.npy"
-        
-        np.save(ilocs_file, ilocs)
-        np.save(dists_file, dists_km)
-        np.save(pesos_file, pesos_inv)
-        
-        # Salvar informações da grade
-        grid_info = {
-            'lon_reg_2d': lon_reg_2d,
-            'lat_reg_2d': lat_reg_2d,
-            'shape': lon_reg_2d.shape,
-            'ilocs_file': str(ilocs_file),
-            'dists_file': str(dists_file),
-            'pesos_file': str(pesos_file)
-        }
-        
-        self.logger.info(f"Pesos salvos em: {weights_dir}")
-        self.logger.info(f"Shape da grade regular: {lon_reg_2d.shape}")
-        
-        return grid_info
+        if not SKLEARN_AVAILABLE:
+            self.logger.error("scikit-learn is required for interpolation")
+            raise ImportError("Please install scikit-learn: pip install scikit-learn")
     
-    def load_interpolation_weights(self, weights_dir: Path) -> Dict:
+    def _create_regular_grid(self, lat_bounds: Tuple[float, float], 
+                            lon_bounds: Tuple[float, float]) -> Tuple[np.ndarray, np.ndarray]:
         """
-        Carrega os pesos de interpolação salvos
+        Create regular lat-lon grid.
         
-        Args:
-            weights_dir: Diretório com os pesos salvos
+        Parameters
+        ----------
+        lat_bounds : tuple
+            (min_lat, max_lat) in degrees
+        lon_bounds : tuple
+            (min_lon, max_lon) in degrees
             
-        Returns:
-            Dicionário com índices, distâncias e pesos
+        Returns
+        -------
+        lat_grid : np.ndarray
+            2D array of latitudes
+        lon_grid : np.ndarray
+            2D array of longitudes
         """
-        ilocs_file = weights_dir / "ilocs_interpolation.npy"
-        dists_file = weights_dir / "dists_interpolation.npy"
-        pesos_file = weights_dir / "pesos_interpolation.npy"
+        min_lat, max_lat = lat_bounds
+        min_lon, max_lon = lon_bounds
         
-        if not all(f.exists() for f in [ilocs_file, dists_file, pesos_file]):
-            raise FileNotFoundError("Arquivos de pesos não encontrados. Execute setup_interpolation_weights primeiro.")
+        lat_points = np.arange(min_lat, max_lat + self.lat_resolution, self.lat_resolution)
+        lon_points = np.arange(min_lon, max_lon + self.lon_resolution, self.lon_resolution)
         
-        ilocs = np.load(ilocs_file)
-        dists_km = np.load(dists_file)
-        pesos = np.load(pesos_file)
+        lon_grid, lat_grid = np.meshgrid(lon_points, lat_points)
+        
+        self.logger.info(f"Regular grid created: {lat_grid.shape[0]} x {lon_grid.shape[1]} points")
+        
+        return lat_grid, lon_grid
+    
+    def _build_interpolation_tree(self, lat_mpas: np.ndarray, 
+                                  lon_mpas: np.ndarray) -> Tuple[BallTree, np.ndarray]:
+        """
+        Build KD-tree for nearest neighbor interpolation.
+        
+        Parameters
+        ----------
+        lat_mpas : np.ndarray
+            MPAS cell latitudes in degrees
+        lon_mpas : np.ndarray
+            MPAS cell longitudes in degrees
+            
+        Returns
+        -------
+        tree : BallTree
+            Spatial index for nearest neighbor search
+        mpas_coords : np.ndarray
+            MPAS coordinates in radians (n_points, 2)
+        """
+        lat_rad = np.radians(lat_mpas)
+        lon_rad = np.radians(lon_mpas)
+        
+        mpas_coords = np.column_stack([lat_rad, lon_rad])
+        
+        tree = BallTree(mpas_coords, metric='haversine')
+        
+        self.logger.info(f"Interpolation tree built with {len(lat_mpas)} MPAS cells")
+        
+        return tree, mpas_coords
+    
+    def _build_interpolation_indices(self, tree: BallTree, 
+                                      lat_grid: np.ndarray, 
+                                      lon_grid: np.ndarray,
+                                      max_dist_km: float = 30.0) -> Dict:
+        """
+        Calculate interpolation indices and weights once for reuse.
+        Uses 3 nearest neighbors with inverse distance weighting.
+        Points beyond max_dist_km are masked as NaN.
+        
+        Parameters
+        ----------
+        tree : BallTree
+            Spatial index for MPAS cells
+        lat_grid : np.ndarray
+            Target grid latitudes (2D)
+        lon_grid : np.ndarray
+            Target grid longitudes (2D)
+        max_dist_km : float
+            Maximum distance in km for valid interpolation
+            
+        Returns
+        -------
+        interp_data : dict
+            Dictionary with indices, distances, weights, and mask
+        """
+        lat_grid_rad = np.radians(lat_grid.ravel())
+        lon_grid_rad = np.radians(lon_grid.ravel())
+        
+        grid_coords = np.column_stack([lat_grid_rad, lon_grid_rad])
+        
+        # Query for 3 nearest neighbors
+        distances, indices = tree.query(grid_coords, k=3)
+        
+        # Convert distances to km (haversine returns radians, Earth radius = 6371 km)
+        distances_km = distances * 6371.0
+        
+        # Calculate inverse distance weights
+        weights = 1.0 / (distances_km**2 + 1e-10)
+        weights = weights / np.sum(weights, axis=1, keepdims=True)
+        
+        # Create mask for points too far from any MPAS cell
+        valid_mask = distances_km[:, 0] <= max_dist_km
+        
+        self.logger.info(f"Interpolation indices calculated for {len(indices)} grid points")
+        self.logger.info(f"Valid points (within {max_dist_km} km): {np.sum(valid_mask)} / {len(valid_mask)}")
         
         return {
-            'ilocs': ilocs,
-            'dists_km': dists_km,
-            'pesos': pesos
+            'indices': indices,
+            'distances_km': distances_km,
+            'weights': weights,
+            'valid_mask': valid_mask,
+            'grid_shape': lat_grid.shape
         }
     
-    def interpolate_field_to_regular(self, field_mpas: np.ndarray, 
-                                   interpolation_data: Dict, 
-                                   grid_shape: Tuple) -> np.ndarray:
+    def _interpolate_to_grid(self, interp_data: Dict,
+                            data_mpas: np.ndarray) -> np.ndarray:
         """
-        Interpola um campo MPAS para grade regular
+        Interpolate MPAS data to regular grid using precomputed weights.
+        Uses inverse distance weighting with 3 nearest neighbors.
         
-        Args:
-            field_mpas: Campo nos pontos MPAS
-            interpolation_data: Dados de interpolação
-            grid_shape: Forma da grade regular
+        Parameters
+        ----------
+        interp_data : dict
+            Precomputed interpolation data (indices, weights, mask)
+        data_mpas : np.ndarray
+            MPAS data values (nCells,) or (nCells, nLevels)
             
-        Returns:
-            Campo interpolado na grade regular
+        Returns
+        -------
+        data_grid : np.ndarray
+            Interpolated data on regular grid
         """
-        ilocs = interpolation_data['ilocs']
-        dists_km = interpolation_data['dists_km']
-        pesos = interpolation_data['pesos']
+        indices = interp_data['indices']
+        weights = interp_data['weights']
+        valid_mask = interp_data['valid_mask']
+        grid_shape = interp_data['grid_shape']
         
-        # Interpolar
-        field_interp = np.sum(field_mpas[ilocs] * pesos, axis=-1)
+        if data_mpas.ndim == 1:
+            # 2D field (no vertical levels)
+            # Weighted average of 3 nearest neighbors
+            data_interp = np.sum(data_mpas[indices] * weights, axis=1)
+            
+            # Apply distance mask - set invalid points to NaN
+            data_interp = np.where(valid_mask, data_interp, np.nan)
+            
+            # Reshape to 2D grid
+            data_grid = data_interp.reshape(grid_shape)
+            
+        else:
+            # 3D field (with vertical levels)
+            n_levels = data_mpas.shape[1]
+            data_grid = np.zeros((grid_shape[0], grid_shape[1], n_levels))
+            
+            for lev in range(n_levels):
+                # Weighted average for this level
+                data_interp = np.sum(data_mpas[indices, lev] * weights, axis=1)
+                
+                # Apply distance mask
+                data_interp = np.where(valid_mask, data_interp, np.nan)
+                
+                # Reshape and store
+                data_grid[:, :, lev] = data_interp.reshape(grid_shape)
         
-        # Aplicar máscara de distância
-        field_interp = np.where(dists_km[:, 0] > self.max_dist_km, np.nan, field_interp)
-        
-        # Reshape para grade 2D
-        return field_interp.reshape(grid_shape)
+        return data_grid
     
-    def get_netcdf_description(self, ds: xr.Dataset) -> Dict:
+    def _detect_3d_variables(self, ds: xr.Dataset) -> List[str]:
         """
-        Extrai descrição automática do NetCDF
+        Detect 3D atmospheric variables in MPAS dataset.
         
-        Args:
-            ds: Dataset NetCDF
+        Parameters
+        ----------
+        ds : xr.Dataset
+            MPAS dataset
             
-        Returns:
-            Informações sobre variáveis 2D
+        Returns
+        -------
+        vars_3d : list
+            List of 3D variable names
         """
-        vars_2d = {}
+        vars_3d = []
         
-        for var_name, var in ds.data_vars.items():
-            # Verificar se é 2D (Time, nCells)
-            if len(var.dims) == 2 and 'nCells' in var.dims:
-                info = {
-                    'dims': var.dims,
-                    'shape': var.shape,
-                    'dtype': var.dtype,
-                    'attrs': dict(var.attrs) if var.attrs else {}
-                }
-                
-                # Tentar extrair descrição dos atributos
-                description = ""
-                if 'long_name' in var.attrs:
-                    description = var.attrs['long_name']
-                elif 'description' in var.attrs:
-                    description = var.attrs['description']
-                elif 'standard_name' in var.attrs:
-                    description = var.attrs['standard_name']
-                
-                info['description'] = description
-                vars_2d[var_name] = info
+        vertical_dims = [
+            'nVertLevels',      # Model native vertical levels
+            'nVertLevelsP1',    # Extended vertical levels
+            'nSoilLevels',      # Soil levels
+            't_iso_levels',     # Isobaric (pressure) levels
+            'nIsoLevelsT'       # Alternative isobaric naming
+        ]
+        
+        for var_name in ds.data_vars:
+            var = ds[var_name]
+            
+            if 'nCells' not in var.dims:
+                continue
+            
+            has_vertical = any(vdim in var.dims for vdim in vertical_dims)
+            
+            if has_vertical:
+                vars_3d.append(var_name)
+        
+        return vars_3d
+    
+    def _detect_2d_variables(self, ds: xr.Dataset) -> List[str]:
+        """
+        Detect 2D spatial variables in MPAS dataset.
+        
+        Parameters
+        ----------
+        ds : xr.Dataset
+            MPAS dataset
+            
+        Returns
+        -------
+        vars_2d : list
+            List of 2D variable names
+        """
+        vars_2d = []
+        
+        vertical_dims = [
+            'nVertLevels', 'nVertLevelsP1', 'nSoilLevels', 
+            't_iso_levels', 'nIsoLevelsT'
+        ]
+        
+        # Skip non-spatial variables
+        skip_vars = ['xtime', 'initial_time']
+        
+        for var_name in ds.data_vars:
+            if var_name in skip_vars:
+                continue
+            
+            var = ds[var_name]
+            
+            # Must have nCells (spatial) and Time dimensions
+            if 'nCells' not in var.dims:
+                continue
+            
+            # Must NOT have vertical dimension
+            has_vertical = any(vdim in var.dims for vdim in vertical_dims)
+            
+            if not has_vertical:
+                vars_2d.append(var_name)
         
         return vars_2d
     
-    def convert_single_file(self, input_file: Path, output_file: Path, 
-                          static_file: Path, weights_dir: Path,
-                          force_recalc: bool = False) -> bool:
+    def _get_variable_attributes(self, var: xr.DataArray) -> Dict[str, str]:
         """
-        Converte um único arquivo NetCDF MPAS para grade regular
+        Extract and sanitize variable attributes for CF compliance.
         
-        Args:
-            input_file: Arquivo NetCDF MPAS de entrada
-            output_file: Arquivo NetCDF de saída
-            static_file: Arquivo estático MPAS
-            weights_dir: Diretório dos pesos
-            force_recalc: Forçar recálculo dos pesos
+        Parameters
+        ----------
+        var : xr.DataArray
+            Source variable
             
-        Returns:
-            True se sucesso, False caso contrário
+        Returns
+        -------
+        attrs : dict
+            CF-compliant attributes
+        """
+        attrs = {}
+        
+        if hasattr(var, 'long_name'):
+            attrs['long_name'] = str(var.long_name)
+        else:
+            attrs['long_name'] = var.name
+        
+        if hasattr(var, 'units'):
+            attrs['units'] = str(var.units)
+        else:
+            attrs['units'] = '1'
+        
+        if hasattr(var, 'description'):
+            attrs['description'] = str(var.description)
+        
+        return attrs
+    
+    def _create_cf_compliant_dataset(self, 
+                                     data_dict: Dict[str, np.ndarray],
+                                     lat_grid: np.ndarray,
+                                     lon_grid: np.ndarray,
+                                     times: np.ndarray,
+                                     levels: Optional[np.ndarray],
+                                     attrs_dict: Dict[str, Dict]) -> xr.Dataset:
+        """
+        Create CF-compliant NetCDF dataset for CDO and GrADS.
+        
+        Parameters
+        ----------
+        data_dict : dict
+            Dictionary mapping variable names to data arrays
+        lat_grid : np.ndarray
+            Latitude coordinates (1D)
+        lon_grid : np.ndarray
+            Longitude coordinates (1D)
+        times : np.ndarray
+            Time coordinates
+        levels : np.ndarray, optional
+            Vertical level coordinates
+        attrs_dict : dict
+            Variable attributes
+            
+        Returns
+        -------
+        ds : xr.Dataset
+            CF-compliant dataset
+        """
+        coords = {
+            'time': times,
+            'lat': lat_grid[:, 0],
+            'lon': lon_grid[0, :]
+        }
+        
+        if levels is not None:
+            coords['level'] = levels
+        
+        data_vars = {}
+        
+        for var_name, data in data_dict.items():
+            attrs = attrs_dict.get(var_name, {})
+            
+            if data.ndim == 3:
+                dims = ('time', 'lat', 'lon')
+            elif data.ndim == 4:
+                dims = ('time', 'level', 'lat', 'lon')
+            else:
+                continue
+            
+            data_vars[var_name] = (dims, data, attrs)
+        
+        ds = xr.Dataset(data_vars, coords=coords)
+        
+        # Add coordinate attributes for CF compliance
+        ds['time'].attrs = {
+            'long_name': 'time',
+            'standard_name': 'time',
+            'axis': 'T'
+        }
+        
+        ds['lat'].attrs = {
+            'long_name': 'latitude',
+            'standard_name': 'latitude',
+            'units': 'degrees_north',
+            'axis': 'Y'
+        }
+        
+        ds['lon'].attrs = {
+            'long_name': 'longitude',
+            'standard_name': 'longitude',
+            'units': 'degrees_east',
+            'axis': 'X'
+        }
+        
+        if levels is not None:
+            # Determine if these are pressure levels or model levels
+            is_pressure = levels[0] > 10  # Heuristic: pressure levels are > 10
+            
+            if is_pressure:
+                ds['level'].attrs = {
+                    'long_name': 'pressure',
+                    'standard_name': 'air_pressure',
+                    'units': 'hPa',
+                    'axis': 'Z',
+                    'positive': 'down'
+                }
+            else:
+                ds['level'].attrs = {
+                    'long_name': 'model_level',
+                    'units': '1',
+                    'axis': 'Z',
+                    'positive': 'down'
+                }
+        
+        # Global attributes
+        ds.attrs = {
+            'title': 'MPAS model output on regular grid',
+            'institution': 'CEMPA/INPE',
+            'source': 'MONAN/MPAS atmospheric model',
+            'history': f'Created on {datetime.now().isoformat()}',
+            'Conventions': 'CF-1.8',
+            'grid_type': 'regular_lat_lon',
+            'grid_resolution_lat': f'{self.lat_resolution} degrees',
+            'grid_resolution_lon': f'{self.lon_resolution} degrees'
+        }
+        
+        return ds
+    
+    def _save_netcdf(self, ds: xr.Dataset, output_file: Path) -> bool:
+        """
+        Save dataset to NetCDF file with CDO/GrADS compatibility.
+        
+        Parameters
+        ----------
+        ds : xr.Dataset
+            Dataset to save
+        output_file : Path
+            Output file path
+            
+        Returns
+        -------
+        success : bool
+            True if successful
         """
         try:
-            self.logger.info(f"Convertendo: {input_file.name}")
+            encoding = {}
             
-            # Verificar se arquivo de entrada existe
-            if not validate_file_exists(input_file, min_size=1024):  # Min 1KB
-                self.logger.error(f"ERROR: Invalid input file: {input_file}")
-                return False
-            
-            # Carregar datasets
-            ds_input = xr.open_dataset(input_file)
-            
-            # Configurar ou carregar pesos
-            weights_exist = all((weights_dir / f).exists() 
-                              for f in ["ilocs_interpolation.npy", "dists_interpolation.npy", "pesos_interpolation.npy"])
-            
-            if not weights_exist or force_recalc:
-                self.logger.info("[INFO] Calculating interpolation weights...")
-                grid_info = self.setup_interpolation_weights(static_file, weights_dir)
-            else:
-                self.logger.debug("Carregando pesos existentes...")
-                # Recriar informações da grade
-                lon_reg = np.arange(self.lon_min, self.lon_max, self.resolution)
-                lat_reg = np.arange(self.lat_min, self.lat_max, self.resolution)
-                lon_reg_2d, lat_reg_2d = np.meshgrid(lon_reg, lat_reg)
-                grid_info = {
-                    'lon_reg_2d': lon_reg_2d,
-                    'lat_reg_2d': lat_reg_2d,
-                    'shape': lon_reg_2d.shape
+            for var in ds.data_vars:
+                encoding[var] = {
+                    'zlib': True,
+                    'complevel': 4,
+                    'shuffle': True,
+                    'dtype': 'float32',
+                    '_FillValue': -999.0
                 }
             
-            # Carregar dados de interpolação
-            interpolation_data = self.load_interpolation_weights(weights_dir)
+            # Coordinate encoding
+            for coord in ds.coords:
+                if coord == 'time':
+                    encoding[coord] = {
+                        'dtype': 'float64',
+                        'units': 'hours since 1970-01-01 00:00:00',
+                        'calendar': 'proleptic_gregorian'
+                    }
+                else:
+                    encoding[coord] = {'dtype': 'float32'}
             
-            # Obter descrição das variáveis
-            vars_2d = self.get_netcdf_description(ds_input)
-            self.logger.debug(f"[DEBUG] Found {len(vars_2d)} 2D variables")
+            ds.to_netcdf(
+                output_file,
+                format='NETCDF4_CLASSIC',
+                encoding=encoding,
+                unlimited_dims=['time']
+            )
             
-            # Criar dataset de saída
-            lon_reg_1d = np.arange(self.lon_min, self.lon_max, self.resolution)
-            lat_reg_1d = np.arange(self.lat_min, self.lat_max, self.resolution)
-            
-            # Coordenadas
-            coords = {
-                'lon': lon_reg_1d,
-                'lat': lat_reg_1d,
-                'time': ds_input.coords['Time'] if 'Time' in ds_input.coords else [0]
-            }
-            
-            # Interpolar todas as variáveis 2D
-            data_vars = {}
-            
-            for var_name, var_info in vars_2d.items():
-                self.logger.debug(f"Interpolando {var_name}...")
-                
-                var_data = ds_input[var_name].values
-                
-                # Verificar se tem dimensão temporal
-                if var_data.ndim == 2:  # (Time, nCells)
-                    interpolated_data = np.zeros((var_data.shape[0], *grid_info['shape']))
-                    
-                    for t in range(var_data.shape[0]):
-                        interpolated_data[t] = self.interpolate_field_to_regular(
-                            var_data[t], interpolation_data, grid_info['shape']
-                        )
-                        
-                    data_vars[var_name] = (
-                        ['time', 'lat', 'lon'], 
-                        interpolated_data,
-                        var_info['attrs']
-                    )
-                else:  # (nCells,) - sem dimensão temporal
-                    interpolated_data = self.interpolate_field_to_regular(
-                        var_data, interpolation_data, grid_info['shape']
-                    )
-                    
-                    data_vars[var_name] = (
-                        ['lat', 'lon'], 
-                        interpolated_data,
-                        var_info['attrs']
-                    )
-            
-            # Adicionar coordenadas lat/lon 2D
-            data_vars['longitude'] = (['lat', 'lon'], grid_info['lon_reg_2d'])
-            data_vars['latitude'] = (['lat', 'lon'], grid_info['lat_reg_2d'])
-            
-            # Criar dataset
-            ds_output = xr.Dataset(data_vars, coords=coords)
-            
-            # Adicionar atributos globais
-            ds_output.attrs.update({
-                'title': 'MPAS data interpolated to regular grid',
-                'source_file': str(input_file),
-                'interpolation_method': 'Inverse distance weighting (k=3)',
-                'max_distance_km': self.max_dist_km,
-                'grid_resolution_deg': self.resolution,
-                'grid_bounds': f'lon:[{self.lon_min}, {self.lon_max}], lat:[{self.lat_min}, {self.lat_max}]'
-            })
-            
-            # Criar diretório de saída se necessário
-            output_file.parent.mkdir(parents=True, exist_ok=True)
-            
-            # Salvar
-            self.logger.debug(f"Salvando em: {output_file}")
-            ds_output.to_netcdf(output_file)
-            
-            # Fechar datasets
-            ds_input.close()
-            ds_output.close()
-            
-            # Verificar arquivo de saída
-            output_size_mb = get_file_size_mb(output_file)
-            self.logger.info(f"SUCCESS: Conversion completed: {output_file.name} ({output_size_mb:.1f} MB)")
+            file_size_mb = output_file.stat().st_size / (1024 * 1024)
+            self.logger.info(f"NetCDF file saved: {output_file.name} ({file_size_mb:.1f} MB)")
             
             return True
             
         except Exception as e:
-            self.logger.error(f"Erro ao converter {input_file}: {e}")
-            self.logger.exception("Detalhes do erro:")
+            self.logger.error(f"Failed to save NetCDF file: {e}")
             return False
     
-    def find_diag_files(self, run_dir: Path) -> List[Path]:
+    def convert_diag_file(self, diag_file: Path, static_file: Path, 
+                         output_file: Optional[Path] = None) -> bool:
         """
-        Encontra todos os arquivos de diagnóstico na pasta run
+        Convert single MPAS diagnostic file to regular grid.
         
-        Args:
-            run_dir: Diretório de execução do modelo
+        Parameters
+        ----------
+        diag_file : Path
+            MPAS diagnostic file
+        static_file : Path
+            MPAS static file with grid coordinates
+        output_file : Path, optional
+            Output file path (auto-generated if None)
             
-        Returns:
-            Lista de arquivos de diagnóstico encontrados
+        Returns
+        -------
+        success : bool
+            True if conversion successful
         """
-        # Padrões de arquivos de diagnóstico
-        patterns = [
-            'diag.*.nc',
-            'history.*.nc',
-            'output.*.nc'
-        ]
+        self.logger.info(f"Converting: {diag_file.name}")
         
-        diag_files = []
-        for pattern in patterns:
-            files = list(run_dir.glob(pattern))
-            diag_files.extend(files)
-        
-        # Ordenar por nome (que inclui data/hora)
-        diag_files.sort()
-        
-        self.logger.info(f"[INFO] Found {len(diag_files)} diagnostic files")
-        for f in diag_files[:5]:  # Mostrar apenas os primeiros 5
-            self.logger.debug(f"  - {f.name}")
-        if len(diag_files) > 5:
-            self.logger.debug(f"  ... e mais {len(diag_files) - 5} arquivos")
-        
-        return diag_files
+        try:
+            ds_diag = xr.open_dataset(diag_file)
+            ds_static = xr.open_dataset(static_file)
+            
+            lat_mpas = np.degrees(ds_static['latCell'].values)
+            lon_mpas = np.degrees(ds_static['lonCell'].values)
+            
+            lat_bounds = (lat_mpas.min(), lat_mpas.max())
+            lon_bounds = (lon_mpas.min(), lon_mpas.max())
+            
+            lat_grid, lon_grid = self._create_regular_grid(lat_bounds, lon_bounds)
+            
+            tree, mpas_coords = self._build_interpolation_tree(lat_mpas, lon_mpas)
+            
+            # Calculate interpolation weights ONCE for all variables and timesteps
+            # Uses 3 nearest neighbors with inverse distance weighting
+            max_dist_km = self.config.get('conversion.max_dist_km', 30.0)
+            interp_data = self._build_interpolation_indices(tree, lat_grid, lon_grid, max_dist_km)
+            self.logger.info(f"Interpolation weights computed (max dist: {max_dist_km} km)")
+            
+            # Detect both 3D and 2D variables
+            vars_3d = self._detect_3d_variables(ds_diag)
+            vars_2d = self._detect_2d_variables(ds_diag)
+            
+            total_vars = len(vars_3d) + len(vars_2d)
+            
+            if total_vars == 0:
+                self.logger.warning(f"No spatial variables found in {diag_file.name}")
+                return False
+            
+            if vars_3d:
+                self.logger.info(f"Processing {len(vars_3d)} 3D variables: {vars_3d}")
+            if vars_2d:
+                self.logger.info(f"Processing {len(vars_2d)} 2D variables: {vars_2d}")
+            
+            # Handle time coordinate - convert xtime bytes to datetime
+            if 'xtime' in ds_diag:
+                xtime_raw = ds_diag['xtime'].values
+                if xtime_raw.dtype.kind == 'S':  # Byte string
+                    # Convert MPAS format "2025-10-20_09:00:00" to ISO format "2025-10-20T09:00:00"
+                    times = np.array([np.datetime64(xtime_raw[i].decode().strip().replace('_', 'T')) 
+                                     for i in range(len(xtime_raw))])
+                else:
+                    times = xtime_raw
+            elif 'Time' in ds_diag.coords:
+                times = ds_diag['Time'].values
+            else:
+                # Create dummy time coordinate
+                times = np.array([np.datetime64('2000-01-01T00:00:00')])
+            
+            n_times = len(times)
+            
+            data_dict = {}
+            attrs_dict = {}
+            levels = None
+            
+            # Process 3D variables
+            for var_name in vars_3d:
+                var = ds_diag[var_name]
+                
+                vert_dim = None
+                for vd in ['nVertLevels', 'nVertLevelsP1', 'nSoilLevels', 't_iso_levels', 'nIsoLevelsT']:
+                    if vd in var.dims:
+                        vert_dim = vd
+                        break
+                
+                if vert_dim:
+                    n_levels = var.sizes[vert_dim]
+                    
+                    # Extract real vertical coordinate values from MPAS
+                    if levels is None:
+                        if vert_dim in ds_diag.coords:
+                            levels = ds_diag[vert_dim].values
+                        elif vert_dim in ds_diag.dims:
+                            levels = np.arange(1, n_levels + 1, dtype=np.float32)
+                        else:
+                            levels = np.arange(1, n_levels + 1, dtype=np.float32)
+                    
+                    data_grid = np.zeros((n_times, n_levels, lat_grid.shape[0], lat_grid.shape[1]))
+                    
+                    for t in range(n_times):
+                        data_time = var.isel(Time=t).values
+                        data_interp = self._interpolate_to_grid(interp_data, data_time)
+                        for lev in range(n_levels):
+                            data_grid[t, lev, :, :] = data_interp[:, :, lev]
+                else:
+                    data_grid = np.zeros((n_times, lat_grid.shape[0], lat_grid.shape[1]))
+                    
+                    for t in range(n_times):
+                        data_time = var.isel(Time=t).values
+                        data_interp = self._interpolate_to_grid(interp_data, data_time)
+                        data_grid[t, :, :] = data_interp
+                
+                data_dict[var_name] = data_grid
+                attrs_dict[var_name] = self._get_variable_attributes(var)
+                
+                self.logger.info(f"  {var_name}: {data_grid.shape}")
+            
+            # Process 2D variables
+            for var_name in vars_2d:
+                var = ds_diag[var_name]
+                
+                data_grid = np.zeros((n_times, lat_grid.shape[0], lat_grid.shape[1]))
+                
+                for t in range(n_times):
+                    data_time = var.isel(Time=t).values
+                    data_interp = self._interpolate_to_grid(interp_data, data_time)
+                    data_grid[t, :, :] = data_interp
+                
+                data_dict[var_name] = data_grid
+                attrs_dict[var_name] = self._get_variable_attributes(var)
+                
+                self.logger.info(f"  {var_name}: {data_grid.shape}")
+            
+            ds_output = self._create_cf_compliant_dataset(
+                data_dict, lat_grid, lon_grid, times, levels, attrs_dict
+            )
+            
+            if output_file is None:
+                output_file = diag_file.parent / f"regular_grid_{diag_file.name}"
+            
+            success = self._save_netcdf(ds_output, output_file)
+            
+            ds_diag.close()
+            ds_static.close()
+            ds_output.close()
+            
+            if success:
+                self.logger.info(f"SUCCESS: Converted {diag_file.name}")
+            
+            return success
+            
+        except Exception as e:
+            self.logger.error(f"Error converting {diag_file.name}: {e}")
+            self.logger.exception("Details:")
+            return False
     
     def convert_all_diag_files(self, run_dir: Path, static_file: Path) -> bool:
         """
-        Converte todos os arquivos de diagnóstico para grade regular
+        Convert all diagnostic files in run directory.
         
-        Args:
-            run_dir: Diretório de execução do modelo
-            static_file: Arquivo estático MPAS
+        Parameters
+        ----------
+        run_dir : Path
+            Directory containing MPAS diagnostic files
+        static_file : Path
+            MPAS static file
             
-        Returns:
-            True se todas as conversões foram bem-sucedidas
+        Returns
+        -------
+        success : bool
+            True if all conversions successful
         """
-        self.logger.info("="*50)
-        self.logger.info("CONVERTENDO DADOS PARA GRADE REGULAR")
-        self.logger.info("="*50)
+        self.logger.info("="*60)
+        self.logger.info("CONVERTING MPAS DATA TO REGULAR GRID")
+        self.logger.info("="*60)
         
-        try:
-            # Encontrar arquivos de diagnóstico
-            diag_files = self.find_diag_files(run_dir)
-            
-            if not diag_files:
-                self.logger.warning("WARNING: No diagnostic files found")
-                return True  # Não é erro fatal
-            
-            # Verificar arquivo estático
-            if not validate_file_exists(static_file, min_size=1024*1024):  # Min 1MB
-                self.logger.error(f"ERROR: Invalid static file: {static_file}")
-                return False
-            
-            # Diretórios
-            weights_dir = run_dir / "interpolation_weights"
-            output_dir = run_dir / "regular_grid"
-            
-            # Contadores
-            success_count = 0
-            total_files = len(diag_files)
-            
-            # Converter cada arquivo
-            for i, diag_file in enumerate(diag_files, 1):
-                self.logger.info(f"[{i}/{total_files}] Processando: {diag_file.name}")
-                
-                # Nome do arquivo de saída
-                output_name = f"regular_{diag_file.name}"
-                output_file = output_dir / output_name
-                
-                # Pular se já existe e é recente
-                if (output_file.exists() and 
-                    output_file.stat().st_mtime > diag_file.stat().st_mtime):
-                    self.logger.info(f"  -> File already converted (newer): {output_name}")
-                    success_count += 1
-                    continue
-                
-                # Converter
-                if self.convert_single_file(diag_file, output_file, static_file, 
-                                          weights_dir, force_recalc=(i == 1)):
-                    success_count += 1
-                else:
-                    self.logger.error(f"  -> Conversion failed: {diag_file.name}")
-            
-            # Relatório final
-            self.logger.info("="*50)
-            self.logger.info("CONVERSION REPORT")
-            self.logger.info("="*50)
-            self.logger.info(f"Total de arquivos: {total_files}")
-            self.logger.info(f"Successful conversions: {success_count}")
-            self.logger.info(f"Failed conversions: {total_files - success_count}")
-            
-            if success_count == total_files:
-                self.logger.info("SUCCESS: All conversions completed successfully!")
-                self.logger.info(f"Arquivos convertidos salvos em: {output_dir}")
-            else:
-                self.logger.warning(f"WARNING: {total_files - success_count} conversions failed")
-            
-            return success_count > 0  # Sucesso se pelo menos uma conversão funcionou
-            
-        except Exception as e:
-            self.logger.error(f"ERROR: Error during data conversion: {e}")
-            self.logger.exception("Detalhes do erro:")
+        diag_files = sorted(run_dir.glob("diag.*.nc"))
+        
+        if not diag_files:
+            self.logger.error(f"No diagnostic files found in {run_dir}")
             return False
-    
-    def get_conversion_summary(self, run_dir: Path) -> Dict:
-        """
-        Retorna resumo das conversões realizadas
         
-        Args:
-            run_dir: Diretório de execução
-            
-        Returns:
-            Dicionário com resumo das conversões
-        """
+        self.logger.info(f"Found {len(diag_files)} diagnostic files")
+        
         output_dir = run_dir / "regular_grid"
+        output_dir.mkdir(exist_ok=True)
         
-        if not output_dir.exists():
-            return {'converted_files': 0, 'total_size_mb': 0, 'files': []}
+        success_count = 0
+        failed_files = []
         
-        converted_files = list(output_dir.glob("regular_*.nc"))
-        total_size = sum(f.stat().st_size for f in converted_files)
+        for i, diag_file in enumerate(diag_files, 1):
+            self.logger.info(f"[{i}/{len(diag_files)}] Processing {diag_file.name}")
+            
+            output_file = output_dir / f"regular_{diag_file.name}"
+            
+            if self.convert_diag_file(diag_file, static_file, output_file):
+                success_count += 1
+            else:
+                failed_files.append(diag_file.name)
         
-        return {
-            'converted_files': len(converted_files),
-            'total_size_mb': total_size / (1024 * 1024),
-            'files': [f.name for f in converted_files],
-            'output_dir': str(output_dir)
-        }
+        self.logger.info("="*60)
+        self.logger.info("CONVERSION SUMMARY")
+        self.logger.info("="*60)
+        self.logger.info(f"Total files: {len(diag_files)}")
+        self.logger.info(f"Successful: {success_count}")
+        self.logger.info(f"Failed: {len(failed_files)}")
+        
+        if failed_files:
+            self.logger.warning("Failed files:")
+            for fname in failed_files:
+                self.logger.warning(f"  - {fname}")
+        
+        if success_count == len(diag_files):
+            self.logger.info("SUCCESS: All files converted successfully")
+            return True
+        else:
+            self.logger.error("FAILED: Some conversions failed")
+            return False

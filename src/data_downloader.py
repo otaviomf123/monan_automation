@@ -61,7 +61,7 @@ class GFSDownloader:
     >>> from src.config_loader import ConfigLoader
     >>> config = ConfigLoader('config.yml')
     >>> downloader = GFSDownloader(config)
-    >>> success = downloader.download_gfs_data(Path('./gfs_data'))
+    >>> success = downloader.download_gfs_data(Path('./ic_data'))
     """
     
     def __init__(self, config: ConfigLoader) -> None:
