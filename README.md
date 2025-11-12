@@ -116,6 +116,57 @@ paths:
   decomp_file_prefix: "/home/otavio.feitosa/limited_area/test_furnas/brasil_circle.graph.info.part."
 ```
 
+#### Configurações de Física
+```yaml
+physics:
+  # Configurações básicas
+  physics_suite: "mesoscale_reference_monan"
+  dt: 60.0
+  nvertlevels: 55
+  nsoillevels: 4
+  nfglevels: 34
+  
+  # Esquemas de física
+  microphysics:
+    scheme: "wsm6"
+  convection:
+    scheme: "grell_freitas"
+  pbl:
+    scheme: "mynn"
+  surface_layer:
+    scheme: "sf_mynn"
+  land_surface:
+    scheme: "noah"
+    
+  # Radiação
+  radiation:
+    longwave:
+      scheme: "rrtmg"
+      interval: "00:30:00"
+    shortwave:
+      scheme: "rrtmg"
+      interval: "00:30:00"
+    cloud_fraction_scheme: "cld_fraction"
+    
+  # Opções de convecção
+  convection_options:
+    interval: 900          # Intervalo de convecção (segundos)
+    closure: "dp"          # Tipo de closure da convecção
+    
+  # Outras opções
+  options:
+    sst_update: false
+    sstdiurn_update: false
+    deepsoiltemp_update: false
+
+# Configurações da parametrização GF-MONAN
+gf_monan:
+  config_gf_pcvol: 0       # Parametrização de volume de cold pool (0=desligado, 1=ligado)
+  config_gf_cporg: 1       # Organização de cold pool (0=desligado, 1=ligado)
+  config_gf_gustf: 1       # Fator de rajada (0=desligado, 1=ligado)
+  config_gf_sub3d: 0       # Subsidência 3D (0=desligado, 1=ligado)
+```
+
 #### Configurações de Conversão
 ```yaml
 conversion:

@@ -188,6 +188,10 @@ class ModelRunner:
         longwave = radiation.get('longwave', {})
         shortwave = radiation.get('shortwave', {})
         options = physics.get('options', {})
+        convection_options = physics.get('convection_options', {})
+        
+        # Obter configuracoes do GF-MONAN
+        gf_monan_config = self.config.get('gf_monan', {})
         
         return {
             'nhyd_model': {
@@ -255,6 +259,11 @@ class ModelRunner:
                 'config_radtlw_interval': longwave.get('interval', '00:30:00'),
                 'config_radtsw_interval': shortwave.get('interval', '00:30:00'),
                 
+                # Convection options
+                'config_cu_rad_feedback': True,
+                'config_conv_interval': convection_options.get('interval', 900),
+                'config_cu_closure': convection_options.get('closure', 'dp'),
+                
                 # Other physics options
                 'config_bucket_update': 'none',
                 'config_physics_suite': physics.get('physics_suite', 'mesoscale_reference_monan'),
@@ -262,10 +271,10 @@ class ModelRunner:
                 'config_mynn_edmf': 0
             },
             'gf_monan': {
-                'config_gf_pcvol': 0,
-                'config_gf_cporg': 0,
-                'config_gf_gustf': 0,
-                'config_gf_sub3d': 0
+                'config_gf_pcvol': gf_monan_config.get('config_gf_pcvol', 0),
+                'config_gf_cporg': gf_monan_config.get('config_gf_cporg', 1),
+                'config_gf_gustf': gf_monan_config.get('config_gf_gustf', 1),
+                'config_gf_sub3d': gf_monan_config.get('config_gf_sub3d', 0)
             },
             'soundings': {
                 'config_sounding_interval': 'none'

@@ -153,11 +153,23 @@ physics:
   gravity_wave_drag:
     enabled: true
     
+  # Convection options (for grell_freitas scheme)
+  convection_options:
+    interval: 900              # Convection interval in seconds
+    closure: "dp"              # Convection closure type
+    
   # Other physics options
   options:
     sst_update: false           # Update SST during run
     sstdiurn_update: false      # Diurnal SST update
     deepsoiltemp_update: false  # Deep soil temperature update
+
+# GF-MONAN cold pool parameterization configuration
+gf_monan:
+  config_gf_pcvol: 0           # Cold pool volume parameterization (0=off, 1=on)
+  config_gf_cporg: 1           # Cold pool organization (0=off, 1=on)
+  config_gf_gustf: 1           # Gust factor parameterization (0=off, 1=on)  
+  config_gf_sub3d: 0           # 3D subsidence (0=off, 1=on)
 
 # Configurações de execução
 execution:
