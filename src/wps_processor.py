@@ -56,8 +56,6 @@ class WPSProcessor:
         Dictionary of file/directory paths from configuration
     dates : Dict[str, str]
         Dictionary of date/time settings from configuration
-    domain : Dict[str, Any]
-        Dictionary of domain configuration parameters
     
     Examples
     --------
@@ -81,7 +79,6 @@ class WPSProcessor:
             - paths.vtable_gfs: Path to GFS variable table
             - paths.wps_geog_path: Path to WPS geographic data
             - dates: Start/end times for processing
-            - domain: Grid domain configuration
             
         Raises
         ------
@@ -94,7 +91,7 @@ class WPSProcessor:
         # Extract configuration sections
         self.paths = config.get_paths()
         self.dates = config.get_dates()
-        self.domain = config.get_domain_config()
+        # Note: domain config removed - MONAN uses unstructured mesh from .static.nc file
         
         self.logger.info("[INFO] WPS Processor initialized")
         self.logger.info(f"[INFO] WPS directory: {self.paths.get('wps_dir', 'Not configured')}")
@@ -199,17 +196,18 @@ class WPSProcessor:
                 'parent_grid_ratio': 1,
                 'i_parent_start': 1,
                 'j_parent_start': 1,
-                'e_we': self.domain['e_we'],
-                'e_sn': self.domain['e_sn'],
+                # Domain parameters required by namelist but not used by ungrib
+                'e_we': 100,    # Required but unused by ungrib
+                'e_sn': 100,    # Required but unused by ungrib  
                 'geog_data_res': 'default',
-                'dx': self.domain['dx'],
-                'dy': self.domain['dy'],
+                'dx': 25000,    # Required but unused by ungrib  
+                'dy': 25000,    # Required but unused by ungrib
                 'map_proj': 'lambert',
-                'ref_lat': self.domain['ref_lat'],
-                'ref_lon': self.domain['ref_lon'],
-                'truelat1': self.domain['truelat1'],
-                'truelat2': self.domain['truelat2'],
-                'stand_lon': self.domain['stand_lon'],
+                'ref_lat': -15.0,
+                'ref_lon': -55.0,
+                'truelat1': -15.0,
+                'truelat2': -15.0,
+                'stand_lon': -55.0,
                 'geog_data_path': self.paths['wps_geog_path']
             },
             'ungrib': {
