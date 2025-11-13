@@ -188,7 +188,6 @@ class ModelRunner:
         longwave = radiation.get('longwave', {})
         shortwave = radiation.get('shortwave', {})
         options = physics.get('options', {})
-        convection_options = physics.get('convection_options', {})
         
         # Obter configuracoes do GF-MONAN
         gf_monan_config = self.config.get('gf_monan', {})
@@ -258,11 +257,6 @@ class ModelRunner:
                 # Radiation intervals
                 'config_radtlw_interval': longwave.get('interval', '00:30:00'),
                 'config_radtsw_interval': shortwave.get('interval', '00:30:00'),
-                
-                # Convection options
-                'config_cu_rad_feedback': True,
-                'config_conv_interval': convection_options.get('interval', 900),
-                'config_cu_closure': convection_options.get('closure', 'dp'),
                 
                 # Other physics options
                 'config_bucket_update': 'none',

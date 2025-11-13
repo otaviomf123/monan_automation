@@ -148,11 +148,7 @@ physics:
       interval: "00:30:00"
     cloud_fraction_scheme: "cld_fraction"
     
-  # Opções de convecção
-  convection_options:
-    interval: 900          # Intervalo de convecção (segundos)
-    closure: "dp"          # Tipo de closure da convecção
-    
+  
   # Outras opções
   options:
     sst_update: false

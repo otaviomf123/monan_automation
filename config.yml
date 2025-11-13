@@ -153,11 +153,7 @@ physics:
   gravity_wave_drag:
     enabled: true
     
-  # Convection options (for grell_freitas scheme)
-  convection_options:
-    interval: 900              # Convection interval in seconds
-    closure: "dp"              # Convection closure type
-    
+  
   # Other physics options
   options:
     sst_update: false           # Update SST during run
