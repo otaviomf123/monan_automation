@@ -112,7 +112,7 @@ class ModelRunner:
             return False
         
         # Links para condicoes de fronteira (sem usar ano para evitar problemas na virada do ano)
-        lbc_pattern = 'lbc.*-0*.nc'  # Padrao mais flexivel
+        lbc_pattern = 'lbc.*.nc' 
         lbc_files = list(boundary_dir.glob(lbc_pattern))
         if not lbc_files:
             # Tentar padrao alternativo se nao encontrar
